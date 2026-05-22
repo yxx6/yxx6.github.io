@@ -12,7 +12,7 @@ lang                     : "en-US"
 title                    : "Yixuan Xu"
 title_separator          : "-"
 name                     : &name "Yixuan Xu (徐毅轩)"
-description              : &description "Homepage"
+description              : &description "Yixuan Xu's academic homepage. Undergraduate at USTC and incoming PhD student at HKUST, working on recommender systems, generative retrieval, semantic IDs, and multimodal recommendation."
 url                      : https://yxx6.github.io
 baseurl                  : ""
 repository               : "yxx6/yxx6.github.io"

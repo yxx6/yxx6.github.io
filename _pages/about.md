@@ -1,7 +1,7 @@
 ---
 permalink: /
 title: "About Me"
-description: "Homepage"
+description: "Yixuan Xu's academic homepage. Undergraduate at USTC and incoming PhD student at HKUST, working on recommender systems, generative retrieval, semantic IDs, and multimodal recommendation."
 sitemap: true
 author_profile: true
 redirect_from: 
