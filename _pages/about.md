@@ -2,6 +2,7 @@
 permalink: /
 title: "About Me"
 description: "Homepage"
+sitemap: true
 author_profile: true
 redirect_from: 
   - /about/
