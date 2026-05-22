@@ -2,14 +2,14 @@
 layout: single
 title: "Sitemap"
 permalink: /sitemap/
-sitemap: true
+sitemap: false
 author_profile: true
 ---
 
-{% include base_path %}
+Pages on this site:
 
-Pages on this site. An [XML sitemap]({{ base_path }}/sitemap.xml) is also available for search engines.
+- [Home](https://yxx6.github.io/)
+- [Publications](https://yxx6.github.io/publications/)
+- [Blog Posts](https://yxx6.github.io/blog/)
 
-- [Home]({{ base_path }}/)
-- [Publications]({{ base_path }}/publications/)
-- [Blog Posts]({{ base_path }}/blog/)
+Search engines: [XML sitemap](https://yxx6.github.io/sitemap.xml)
