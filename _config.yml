@@ -8,6 +8,7 @@
 
 # Basic Site Settings
 locale                   : "en-US"
+lang                     : "en-US"
 title                    : "Yixuan Xu"
 title_separator          : "-"
 name                     : &name "Yixuan Xu (徐毅轩)"
@@ -111,7 +112,7 @@ staticman:
       options:
         format           : "iso8601"
 atom_feed:
-  hide                   : false
+  hide                   : true
   path                   :
 
 # SEO Related
