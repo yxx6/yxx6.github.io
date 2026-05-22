@@ -1,6 +1,6 @@
 ---
 permalink: /
-title: "About Me"
+description: "Homepage"
 author_profile: true
 redirect_from: 
   - /about/
@@ -17,7 +17,7 @@ To be determined.
 
 I am a fourth-year undergraduate at the School of the Gifted Young, University of Science and Technology of China (USTC).
 
-I will join the Department of Mathematics at the Hong Kong University of Science and Technology (HKUST) as an incoming PhD student, working with Prof. Can Yang.
+I will join the Department of Mathematics at the Hong Kong University of Science and Technology (HKUST) as an incoming PhD student, working with [Prof. Can Yang](https://www.math.hkust.edu.hk/people/faculty/profile/macyang/).
 
 ## Experience
 
