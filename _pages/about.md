@@ -8,7 +8,7 @@ redirect_from:
   - /about.html
 ---
 
-I am an incoming PhD student in the Department of Mathematics at the Hong Kong University of Science and Technology (HKUST), advised by [Prof. Can Yang](https://www.math.hkust.edu.hk/people/faculty/profile/macyang/).
+I am Yixuan Xu (徐毅轩). Welcome to my homepage.
 
 ## Research Interests
 
@@ -18,7 +18,7 @@ To be determined.
 
 I am a fourth-year undergraduate in Statistics at the School of the Gifted Young, University of Science and Technology of China (USTC).
 
-I will join the Department of Mathematics at the Hong Kong University of Science and Technology (HKUST) as an incoming PhD student, working with [Prof. Can Yang](https://www.math.hkust.edu.hk/people/faculty/profile/macyang/).
+I am an incoming PhD student in the Department of Mathematics at the Hong Kong University of Science and Technology (HKUST), advised by [Prof. Can Yang](https://www.math.hkust.edu.hk/people/faculty/profile/macyang/).
 
 ## Experience
 
