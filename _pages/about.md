@@ -23,7 +23,7 @@ I am an incoming PhD student in the Department of Mathematics at the Hong Kong U
 
 ## Experience
 
-Intern, Hotel Recommendation Algorithms, Trip.com Group (Ctrip)  
+Intern, Fine Ranking, Hotel Recommender Systems, Trip.com Group (Ctrip)  
 March 2026 – present
 
 ## Publications
