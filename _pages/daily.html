@@ -5,7 +5,7 @@ permalink: /daily/
 author_profile: true
 ---
 
-{% assign daily_posts = site.posts | where_exp: "p", "p.path contains '_posts'" %}
+{% assign daily_posts = site.posts | where_exp: "p", "p.paper_count and p.url contains '/daily/'" %}
 {% if daily_posts.size > 0 %}
   {% for post in daily_posts %}
     <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">

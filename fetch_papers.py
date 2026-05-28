@@ -12,7 +12,6 @@ import time
 import html as html_lib
 import argparse
 import datetime
-import textwrap
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -127,12 +126,10 @@ def fetch_arxiv(target_date: datetime.date) -> list[dict]:
     url = f"{ARXIV_API}?{params}"
     print(f"[arXiv] 查询: {url[:120]}...")
 
-    req = urllib.request.Request(url, headers={"User-Agent": "dailypaper/1.0"})
     for attempt in range(5):
         try:
             time.sleep(3 + attempt * 5)  # 首次等3秒，每次重试多等5秒
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                xml_data = resp.read()
+            xml_data = _http_get(url, timeout=60)
             break
         except Exception as e:
             print(f"[arXiv] 第{attempt+1}次请求失败: {e}")
@@ -148,6 +145,10 @@ def fetch_arxiv(target_date: datetime.date) -> list[dict]:
         if not published_str:
             continue
         pub_date = datetime.date.fromisoformat(published_str[:10])
+
+        # 只允许抓取目标日期及之前的论文，避免历史日报混入“未来”论文
+        if pub_date > target_date:
+            continue
 
         # 日期过滤
         if DAYS_BACK > 0:
@@ -285,22 +286,22 @@ def render_post(papers: list[dict], overview: str, date_str: str) -> str:
     ))
 
     # YAML front matter
-    topics_yaml = "\n".join(f'  - "{t}"' for t in topics)
-    frontmatter = textwrap.dedent(f"""\
-        ---
-        layout: single
-        title: "{title}"
-        date: {date_str} 08:00:00 +0800
-        permalink: /daily/{date_str}/
-        paper_count: {len(papers)}
-        share: false
-        related: false
-        read_time: false
-        comments: false
-        topics:
-        {topics_yaml}
-        ---
-    """)
+    frontmatter_lines = [
+        "---",
+        "layout: single",
+        f'title: "{title}"',
+        f"date: {date_str} 08:00:00 +0800",
+        f"permalink: /daily/{date_str}/",
+        f"paper_count: {len(papers)}",
+        "share: false",
+        "related: false",
+        "read_time: false",
+        "comments: false",
+        "topics:",
+    ]
+    frontmatter_lines.extend(f'  - "{t}"' for t in topics)
+    frontmatter_lines.append("---")
+    frontmatter = "\n".join(frontmatter_lines)
 
     # 正文
     body_parts = [f"## 今日概述\n\n{overview}\n"]
