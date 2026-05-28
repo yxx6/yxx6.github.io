@@ -1,0 +1,48 @@
+name: Daily Paper Fetch
+
+on:
+  schedule:
+    # 每天北京时间 09:00 运行（UTC+8，对应 UTC 01:00）
+    - cron: "0 1 * * *"
+  workflow_dispatch:  # 允许手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install anthropic
+
+      - name: Fetch papers and generate post
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python fetch_papers.py
+
+      - name: Commit new post
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add _posts/
+          git diff --cached --quiet || git commit -m "daily paper: $(date +%Y-%m-%d)"
+
+      - name: Push
+        run: git push
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          exclude_assets: ".github,fetch_papers.py,config.py,requirements.txt"

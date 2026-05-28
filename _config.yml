@@ -1,0 +1,30 @@
+title: "每日推荐算法论文速递"
+description: "聚焦生成式推荐系统，每日自动从 arXiv 抓取并用 AI 生成中文摘要"
+url: "https://yxx6.github.io"
+baseurl: ""
+
+author:
+  name: "yxx6"
+
+# Jekyll 设置
+markdown: kramdown
+highlighter: rouge
+permalink: /article/:year-:month-:day-:title/
+
+# 插件
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-paginate
+
+paginate: 10
+paginate_path: "/page/:num/"
+
+# 排除构建
+exclude:
+  - fetch_papers.py
+  - config.py
+  - requirements.txt
+  - README.md
+  - "*.sh"
+  - vendor/
