@@ -1,11 +1,9 @@
 ---
 layout: archive
-title: "推荐算法论文日报"
+title: "Daily Paper"
 permalink: /daily/
 author_profile: true
 ---
-
-<p>每日自动从 arXiv 抓取推荐系统方向论文，由 AI 生成中文摘要。</p>
 
 {% assign daily_posts = site.posts | where_exp: "p", "p.path contains '_posts'" %}
 {% if daily_posts.size > 0 %}
@@ -16,7 +14,6 @@ author_profile: true
       </h2>
       <p class="archive__item-excerpt">
         <small>{{ post.date | date: "%Y年%m月%d日" }}{% if post.paper_count %} · {{ post.paper_count }} 篇{% endif %}</small>
-        {% if post.summary %}<br>{{ post.summary }}{% endif %}
       </p>
     </article>
   {% endfor %}

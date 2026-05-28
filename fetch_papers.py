@@ -291,8 +291,9 @@ def render_post(papers: list[dict], overview: str, date_str: str) -> str:
         layout: single
         title: "{title}"
         date: {date_str} 08:00:00 +0800
+        permalink: /daily/{date_str}/
         paper_count: {len(papers)}
-        summary: "{overview[:80].replace('"', "'")}"
+        share: false
         topics:
         {topics_yaml}
         ---
