@@ -199,7 +199,7 @@ def render_post(papers: list[dict], overview: str, date_str: str) -> str:
     topics_yaml = "\n".join(f'  - "{t}"' for t in topics)
     frontmatter = textwrap.dedent(f"""\
         ---
-        layout: post
+        layout: single
         title: "{title}"
         date: {date_str} 08:00:00 +0800
         paper_count: {len(papers)}

@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: single
 title: "推荐算法日报 2026-05-28"
 date: 2026-05-28 08:00:00 +0800
 paper_count: 1
