@@ -294,6 +294,9 @@ def render_post(papers: list[dict], overview: str, date_str: str) -> str:
         permalink: /daily/{date_str}/
         paper_count: {len(papers)}
         share: false
+        related: false
+        read_time: false
+        comments: false
         topics:
         {topics_yaml}
         ---
