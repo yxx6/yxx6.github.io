@@ -132,20 +132,23 @@ def fetch_arxiv(target_date: datetime.date) -> list[dict]:
 # ─────────────────────────────────────────
 
 def summarize_paper(client: OpenAI, paper: dict) -> dict:
-    prompt = f"""请用{SUMMARY_LANGUAGE}简明总结以下论文，面向工业界机器学习工程师。
+    prompt = f"""你是一名推荐系统方向的资深研究员，正在为同行工程师写论文速读笔记。
 
-标题：{paper['title']}
-摘要（原文）：{paper['abstract']}
+论文标题：{paper['title']}
+原文摘要：{paper['abstract']}
 
-请按以下格式输出（不要输出多余内容）：
+请按以下格式输出，语言为{SUMMARY_LANGUAGE}，每项要有实质内容，禁止废话和重复摘要原文：
 
-**一句话结论**：（20字以内，论文最核心的贡献）
+**核心贡献**：一句话，说清楚这篇论文解决了什么问题、用什么手段解决的（不超过30字）
 
-**方法**：（2-3句，描述技术方案）
+**技术方案**：
+- 问题设定：（这篇论文针对的是什么具体问题或痛点）
+- 方法：（核心技术思路是什么，2-3句，要具体，不要"提出了一个框架"这类废话）
+- 关键设计：（最有创意或最值得关注的一个设计点）
 
-**效果**：（如果有具体数字就列出，没有就写"论文未给出具体指标"）
+**实验结果**：（列出具体数字，如果摘要没有就写"摘要未提供"，不要编造）
 
-**适用场景**：（这个工作对哪类工程实践有参考价值）
+**工程价值**：（对工业界落地有什么启示？适合什么规模/场景？有什么局限？2句话）
 """
 
     response = client.chat.completions.create(
@@ -158,20 +161,23 @@ def summarize_paper(client: OpenAI, paper: dict) -> dict:
 
 
 def generate_daily_overview(client: OpenAI, papers: list[dict], date_str: str) -> str:
-    titles = "\n".join(f"- {p['title']}" for p in papers)
-    prompt = f"""今日（{date_str}）arXiv 推荐系统方向共有以下论文：
+    titles_with_abstract = "\n".join(
+        f"- 标题：{p['title']}\n  摘要：{p['abstract'][:200]}" for p in papers
+    )
+    prompt = f"""你是推荐系统方向的资深研究员，以下是 {date_str} arXiv 上的论文列表：
 
-{titles}
+{titles_with_abstract}
 
-请用{SUMMARY_LANGUAGE}写一段今日概述（150字以内），总结：
-1. 今天的主要研究趋势
-2. 最值得关注的1-2个方向
+请写一段**今日趋势分析**（200字以内），要求：
+1. 指出今天论文整体在攻克哪些核心问题（不要逐篇列举）
+2. 点出最值得工业界关注的1-2个技术方向，说明为什么
+3. 语言简练，有观点，有判断，像一个有经验的研究员在做周会分享
 
-直接输出概述文字，不要加标题。"""
+直接输出正文，不要加任何标题或前缀。"""
 
     response = client.chat.completions.create(
         model=AI_MODEL,
-        max_tokens=300,
+        max_tokens=400,
         messages=[{"role": "user", "content": prompt}],
     )
     return response.choices[0].message.content
@@ -247,8 +253,9 @@ def write_post(content: str, date_str: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--date", default=datetime.date.today().isoformat(),
-                        help="生成哪天的日报，格式 YYYY-MM-DD，默认今天")
+    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    parser.add_argument("--date", default=yesterday,
+                        help="生成哪天的日报，格式 YYYY-MM-DD，默认昨天")
     args = parser.parse_args()
     target_date = datetime.date.fromisoformat(args.date)
     date_str = target_date.isoformat()

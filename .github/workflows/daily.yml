@@ -2,8 +2,8 @@ name: Daily Paper Fetch
 
 on:
   schedule:
-    # 每天北京时间 09:00 运行（UTC+8，对应 UTC 01:00）
-    - cron: "0 1 * * *"
+    # 每天北京时间 05:00 运行（UTC+8，对应 UTC 21:00，即前一天）
+    - cron: "0 21 * * *"
   workflow_dispatch:  # 允许手动触发
 
 permissions:

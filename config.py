@@ -28,9 +28,9 @@ ARXIV_CATEGORIES = ["cs.IR", "cs.LG"]
 
 # 模型选择
 # 推荐选项：
-#   "deepseek-chat"    DeepSeek-V3，速度快，日常使用首选
-#   "deepseek-reasoner" DeepSeek-R1，推理更强，费用更高
-AI_MODEL = "deepseek-chat"
+#   "deepseek-v4-pro"    DeepSeek V4 Pro，质量最好，推荐
+#   "deepseek-v4-flash"  DeepSeek V4 Flash，速度更快，费用更低
+AI_MODEL = "deepseek-v4-pro"
 
 # 摘要语言
 SUMMARY_LANGUAGE = "中文"
