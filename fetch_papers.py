@@ -62,8 +62,16 @@ def fetch_arxiv(target_date: datetime.date) -> list[dict]:
     print(f"[arXiv] 查询: {url[:120]}...")
 
     req = urllib.request.Request(url, headers={"User-Agent": "dailypaper/1.0"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        xml_data = resp.read()
+    for attempt in range(5):
+        try:
+            time.sleep(3 + attempt * 5)  # 首次等3秒，每次重试多等5秒
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                xml_data = resp.read()
+            break
+        except Exception as e:
+            print(f"[arXiv] 第{attempt+1}次请求失败: {e}")
+            if attempt == 4:
+                raise
 
     root = ET.fromstring(xml_data)
     papers = []
