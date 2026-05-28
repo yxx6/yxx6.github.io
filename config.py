@@ -24,14 +24,13 @@ DAYS_BACK = 2
 # 常用：cs.IR (信息检索), cs.LG (机器学习), cs.AI
 ARXIV_CATEGORIES = ["cs.IR", "cs.LG"]
 
-# -------- Claude API 设置 --------
+# -------- DeepSeek API 设置 --------
 
 # 模型选择
 # 推荐选项：
-#   "claude-haiku-4-5-20251001"   最便宜，速度快，适合日常使用
-#   "claude-sonnet-4-6"           平衡，质量更好
-#   "claude-opus-4-7"             最强，最贵
-CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+#   "deepseek-chat"    DeepSeek-V3，速度快，日常使用首选
+#   "deepseek-reasoner" DeepSeek-R1，推理更强，费用更高
+AI_MODEL = "deepseek-chat"
 
 # 摘要语言
 SUMMARY_LANGUAGE = "中文"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 fetch_papers.py
-从 arXiv 拉取论文，用 Claude API 生成中文摘要，写入 Jekyll _posts/
+从 arXiv 拉取论文，用 AI API 生成中文摘要，写入 Jekyll _posts/
 用法：python fetch_papers.py [--date YYYY-MM-DD]
 """
 
@@ -16,14 +16,14 @@ import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
 
-import anthropic
+from openai import OpenAI
 
 from config import (
     SEARCH_TOPICS,
     MAX_PAPERS,
     DAYS_BACK,
     ARXIV_CATEGORIES,
-    CLAUDE_MODEL,
+    AI_MODEL,
     SUMMARY_LANGUAGE,
     SUMMARY_MAX_TOKENS,
     POST_TITLE_TEMPLATE,
@@ -120,10 +120,10 @@ def fetch_arxiv(target_date: datetime.date) -> list[dict]:
 
 
 # ─────────────────────────────────────────
-# Claude 摘要
+# AI 摘要（DeepSeek，兼容 OpenAI 格式）
 # ─────────────────────────────────────────
 
-def summarize_paper(client: anthropic.Anthropic, paper: dict) -> dict:
+def summarize_paper(client: OpenAI, paper: dict) -> dict:
     prompt = f"""请用{SUMMARY_LANGUAGE}简明总结以下论文，面向工业界机器学习工程师。
 
 标题：{paper['title']}
@@ -140,16 +140,16 @@ def summarize_paper(client: anthropic.Anthropic, paper: dict) -> dict:
 **适用场景**：（这个工作对哪类工程实践有参考价值）
 """
 
-    message = client.messages.create(
-        model=CLAUDE_MODEL,
+    response = client.chat.completions.create(
+        model=AI_MODEL,
         max_tokens=SUMMARY_MAX_TOKENS,
         messages=[{"role": "user", "content": prompt}],
     )
-    paper["summary_zh"] = message.content[0].text
+    paper["summary_zh"] = response.choices[0].message.content
     return paper
 
 
-def generate_daily_overview(client: anthropic.Anthropic, papers: list[dict], date_str: str) -> str:
+def generate_daily_overview(client: OpenAI, papers: list[dict], date_str: str) -> str:
     titles = "\n".join(f"- {p['title']}" for p in papers)
     prompt = f"""今日（{date_str}）arXiv 推荐系统方向共有以下论文：
 
@@ -161,12 +161,12 @@ def generate_daily_overview(client: anthropic.Anthropic, papers: list[dict], dat
 
 直接输出概述文字，不要加标题。"""
 
-    message = client.messages.create(
-        model=CLAUDE_MODEL,
+    response = client.chat.completions.create(
+        model=AI_MODEL,
         max_tokens=300,
         messages=[{"role": "user", "content": prompt}],
     )
-    return message.content[0].text
+    return response.choices[0].message.content
 
 
 # ─────────────────────────────────────────
@@ -245,12 +245,12 @@ def main():
     target_date = datetime.date.fromisoformat(args.date)
     date_str = target_date.isoformat()
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        print("错误：请设置环境变量 ANTHROPIC_API_KEY")
+        print("错误：请设置环境变量 DEEPSEEK_API_KEY")
         sys.exit(1)
 
-    client = anthropic.Anthropic(api_key=api_key)
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
     # 1. 拉取论文
     papers = fetch_arxiv(target_date)
@@ -259,7 +259,7 @@ def main():
         sys.exit(0)
 
     # 2. 逐篇生成摘要
-    print(f"[Claude] 开始生成 {len(papers)} 篇摘要，模型：{CLAUDE_MODEL}")
+    print(f"[DeepSeek] 开始生成 {len(papers)} 篇摘要，模型：{AI_MODEL}")
     for i, paper in enumerate(papers, 1):
         print(f"  [{i}/{len(papers)}] {paper['title'][:60]}...")
         papers[i - 1] = summarize_paper(client, paper)
@@ -267,7 +267,7 @@ def main():
             time.sleep(0.3)  # 避免触发速率限制
 
     # 3. 生成今日概述
-    print("[Claude] 生成今日概述...")
+    print("[DeepSeek] 生成今日概述...")
     overview = generate_daily_overview(client, papers, date_str)
 
     # 4. 写入 Jekyll post
