@@ -35,8 +35,8 @@ AI_MODEL = "deepseek-v4-pro"
 # 摘要语言
 SUMMARY_LANGUAGE = "中文"
 
-# 每篇论文摘要的字数限制（影响 API 费用）
-SUMMARY_MAX_TOKENS = 800
+# 每篇论文解读的 token 上限（深度解读需要更多输出）
+SUMMARY_MAX_TOKENS = 2000
 
 # -------- 文章生成设置 --------
 
