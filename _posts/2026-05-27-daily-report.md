@@ -8,9 +8,14 @@ share: false
 related: false
 read_time: false
 comments: false
+excerpt_separator: <!--more-->
 topics:
   - "cs.IR"
 ---
+
+今天聚焦 future supervision 与 Semantic ID 评估纠偏，核心是让训练信号和离线指标都更可信。
+
+<!--more-->
 
 ## 今日概览
 

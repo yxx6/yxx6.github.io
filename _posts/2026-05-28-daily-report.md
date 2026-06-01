@@ -8,9 +8,14 @@ share: false
 related: false
 read_time: false
 comments: false
+excerpt_separator: <!--more-->
 topics:
   - "cs.IR"
 ---
+
+今天聚焦 LLM embedding 几何校正与 future supervision 设计，核心是把更强语义信息稳定转成推荐效果。
+
+<!--more-->
 
 ## 今日概览
 

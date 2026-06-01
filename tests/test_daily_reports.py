@@ -51,6 +51,8 @@ class DailyReportContentTests(unittest.TestCase):
                     continue
                 if stripped == "---":
                     continue
+                if stripped == "<!--more-->":
+                    continue
                 if stripped.startswith(
                     (
                         "layout:",
@@ -62,6 +64,7 @@ class DailyReportContentTests(unittest.TestCase):
                         "related:",
                         "read_time:",
                         "comments:",
+                        "excerpt_separator:",
                         "topics:",
                         "##",
                         "###",
