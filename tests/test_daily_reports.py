@@ -64,6 +64,7 @@ class DailyReportContentTests(unittest.TestCase):
                         "related:",
                         "read_time:",
                         "comments:",
+                        "excerpt:",
                         "excerpt_separator:",
                         "topics:",
                         "##",
