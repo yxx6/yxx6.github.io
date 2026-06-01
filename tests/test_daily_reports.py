@@ -3,8 +3,12 @@ import unittest
 
 
 class DailyReportContentTests(unittest.TestCase):
+    def _iter_daily_report_paths(self):
+        yield from Path("_posts").glob("*-daily-report.md")
+        yield from Path("daily").glob("*/index.md")
+
     def test_daily_report_front_matter_has_no_smart_quotes(self) -> None:
-        for path in Path("_posts").glob("*-daily-report.md"):
+        for path in self._iter_daily_report_paths():
             text = path.read_text(encoding="utf-8")
             frontmatter = text.split("---", 2)[1]
 
@@ -14,7 +18,7 @@ class DailyReportContentTests(unittest.TestCase):
     def test_daily_report_overview_paragraph_ends_cleanly(self) -> None:
         sentence_endings = ("。", "！", "？", ".", "!", "?")
 
-        for path in Path("_posts").glob("*-daily-report.md"):
+        for path in self._iter_daily_report_paths():
             lines = path.read_text(encoding="utf-8").splitlines()
             overview_index = next(
                 i for i, line in enumerate(lines) if line.strip() in {"## 今日概述", "## 今日概览"}
@@ -36,7 +40,7 @@ class DailyReportContentTests(unittest.TestCase):
     def test_daily_report_content_lines_do_not_end_with_truncated_phrases(self) -> None:
         sentence_endings = ("。", "！", "？", ".", "!", "?", "”", '"', "）", ")", "`")
 
-        for path in Path("_posts").glob("*-daily-report.md"):
+        for path in self._iter_daily_report_paths():
             lines = path.read_text(encoding="utf-8").splitlines()
             in_code_block = False
 

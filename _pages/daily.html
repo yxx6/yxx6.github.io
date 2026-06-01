@@ -6,8 +6,10 @@ author_profile: true
 ---
 
 {% assign daily_posts = site.posts | where_exp: "p", "p.paper_count and p.url contains '/daily/'" %}
-{% if daily_posts.size > 0 %}
-  {% for post in daily_posts %}
+{% assign daily_pages = site.pages | where_exp: "p", "p.paper_count and p.url contains '/daily/'" %}
+{% assign daily_entries = daily_posts | concat: daily_pages | sort: "date" | reverse %}
+{% if daily_entries.size > 0 %}
+  {% for post in daily_entries %}
     <article class="archive__item" itemscope itemtype="http://schema.org/CreativeWork">
       <h2 class="archive__item-title" itemprop="headline">
         <a href="{{ post.url | relative_url }}" rel="permalink">{{ post.title }}</a>

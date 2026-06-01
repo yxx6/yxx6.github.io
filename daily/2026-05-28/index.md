@@ -9,8 +9,6 @@ related: false
 read_time: false
 comments: false
 excerpt: "今天聚焦 LLM embedding 几何校正与 future supervision 设计，重点看更强语义信息如何稳定转成推荐效果。"
-topics:
-  - "cs.IR"
 ---
 
 ## 今日概览
@@ -35,11 +33,11 @@ topics:
 
 ACE 基于一个带正则的线性自编码器，对原始 embedding 的奇异值结构做连续收缩控制。直观理解是：
 
-- 保留真正承载语义的主方向；
-- 抑制过强、导致空间塌缩的方差分量；
+- 保留真正承载语义的主方向。
+- 抑制过强、导致空间塌缩的方差分量。
 - 避免像暴力白化那样把所有层次结构都抹平。
 
-因此它更像在“修 embedding 的几何形状”，而不是替换推荐 backbone。
+因此它更像在修 embedding 的几何形状，而不是替换推荐 backbone。
 
 **实验结果**
 
