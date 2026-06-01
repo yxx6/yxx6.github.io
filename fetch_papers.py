@@ -398,6 +398,73 @@ def summarize_paper(client: OpenAI, paper: dict) -> dict:
     return paper
 
 
+def summarize_paper_with_abstract_fallback(
+    client: OpenAI,
+    paper: dict,
+    error: Exception,
+) -> dict:
+    prompt = f"""你是推荐系统方向的资深研究员。由于完整版解读失败，请仅基于摘要生成一份精简但仍然可用的中文读书笔记，保留关键英文术语，禁止脑补未提供的细节。
+
+论文标题：{paper['title']}
+摘要：{paper['abstract']}
+
+请直接输出正文，不要重复论文标题，使用以下结构：
+
+## 一、论文定位
+说明论文在推荐系统里的问题定义与价值。
+
+## 二、核心方法
+仅根据摘要解释输入、核心模块、输出目标；如果摘要信息不足，请明确写“摘要未提供足够细节”。
+
+## 三、实验与可信度
+概括数据集、baseline、指标、提升；没有数字就明确写“论文未报告具体数字”。
+
+## 四、工程含义
+说明它对工业落地最有价值的一点、主要风险，以及什么场景下值得尝试。
+
+> **降级说明**：这份笔记基于摘要生成，因为完整版解读失败，错误原因：{type(error).__name__}: {error}
+> **一句话总结**：不超过 40 字。
+"""
+
+    paper = dict(paper)
+    paper["summary_zh"] = complete_with_continuation(
+        client,
+        prompt,
+        max_tokens=min(SUMMARY_MAX_TOKENS, 1400),
+        continuation_prompt="继续未完成的摘要版读书笔记，直接从上文中断处接着写，不要重复已经输出的内容。",
+    )
+    return paper
+
+
+def build_static_summary_fallback(paper: dict, error: Exception) -> dict:
+    paper = dict(paper)
+    paper["summary_zh"] = (
+        "## 一、论文定位\n"
+        "这篇论文的自动深读在生成时失败，以下仅保留基于摘要的最小化信息，建议后续人工复查原文。\n\n"
+        "## 二、核心方法\n"
+        f"摘要显示其主要关注的问题是：{paper['abstract']}\n\n"
+        "## 三、实验与可信度\n"
+        "本次自动流程未能稳定生成完整实验解读，论文的具体数据集、baseline 与提升数字请以原文为准。\n\n"
+        "## 四、工程含义\n"
+        "建议仅将这篇论文视为待补读条目，暂时不要直接据此做工程决策。\n\n"
+        f"> **降级说明**：自动解读失败，错误原因：{type(error).__name__}: {error}\n"
+        "> **一句话总结**：该论文需要人工补读后再纳入正式日报结论。"
+    )
+    return paper
+
+
+def summarize_paper_safely(client: OpenAI, paper: dict) -> dict:
+    try:
+        return summarize_paper(client, paper)
+    except Exception as exc:
+        print(f"    [警告] 完整版解读失败，降级为摘要版：{exc}")
+        try:
+            return summarize_paper_with_abstract_fallback(client, paper, exc)
+        except Exception as fallback_exc:
+            print(f"    [警告] 摘要版解读也失败，改用静态兜底：{fallback_exc}")
+            return build_static_summary_fallback(paper, fallback_exc)
+
+
 def generate_daily_overview(client: OpenAI, papers: list[dict], date_str: str) -> str:
     papers_info = "\n\n".join(
         f"标题：{p['title']}\n摘要：{p['abstract'][:300]}" for p in papers
@@ -422,6 +489,42 @@ def generate_daily_overview(client: OpenAI, papers: list[dict], date_str: str) -
         max_tokens=DAILY_OVERVIEW_MAX_TOKENS,
         continuation_prompt="继续未完成的趋势分析，直接接着上文写完，不要重复已经输出的内容。",
     )
+
+
+def generate_daily_overview_with_fallback(
+    client: OpenAI,
+    papers: list[dict],
+    date_str: str,
+) -> str:
+    try:
+        return generate_daily_overview(client, papers, date_str)
+    except Exception as exc:
+        print(f"[警告] 今日概述生成失败，降级为简版综述：{exc}")
+        titles = "；".join(p["title"] for p in papers[:3])
+        prompt = f"""你是推荐系统方向的研究员。请仅基于以下论文标题与摘要，写一段 180-260 字的中文简版综述，说明共同主题、最值得工业界关注的方向，以及一个风险提醒。
+
+日期：{date_str}
+论文：{titles}
+
+要求：
+1. 直接输出正文，不加标题
+2. 不要逐篇复述
+3. 写完整，不要半句话收尾
+"""
+        try:
+            return complete_with_continuation(
+                client,
+                prompt,
+                max_tokens=min(DAILY_OVERVIEW_MAX_TOKENS, 420),
+                continuation_prompt="继续未完成的简版综述，直接接着上文写完，不要重复。",
+            )
+        except Exception as fallback_exc:
+            print(f"[警告] 简版综述也失败，改用静态兜底：{fallback_exc}")
+            return (
+                f"{date_str} 这批论文主要围绕推荐表示学习、序列建模与生成式推荐展开。"
+                "由于自动综述生成失败，这里先保留静态占位版本：建议优先关注能在不明显增加线上延迟的前提下提升表示质量、长期兴趣建模或冷启动效果的方法；"
+                "涉及复杂生成链路、额外索引结构或多阶段训练的方案，需要重点评估训练成本、可解释性和部署风险。"
+            )
 
 
 # ─────────────────────────────────────────
@@ -504,12 +607,12 @@ def generate_post_for_date(client: OpenAI, target_date: datetime.date) -> str | 
     print(f"[DeepSeek] 开始解读 {len(papers)} 篇论文，模型：{AI_MODEL}")
     for i, paper in enumerate(papers, 1):
         print(f"  [{i}/{len(papers)}] {paper['title'][:60]}...")
-        papers[i - 1] = summarize_paper(client, paper)
+        papers[i - 1] = summarize_paper_safely(client, paper)
         if i < len(papers):
             time.sleep(0.3)  # 避免触发速率限制
 
     print("[DeepSeek] 生成今日概述...")
-    overview = generate_daily_overview(client, papers, date_str)
+    overview = generate_daily_overview_with_fallback(client, papers, date_str)
 
     content = render_post(papers, overview, date_str)
     path = write_post(content, date_str)
@@ -549,13 +652,26 @@ def main():
 
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
     generated_paths = []
+    failed_dates = []
     for target_date in target_dates:
-        path = generate_post_for_date(client, target_date)
+        try:
+            path = generate_post_for_date(client, target_date)
+        except Exception as exc:
+            failed_dates.append((target_date.isoformat(), str(exc)))
+            print(f"[错误] {target_date.isoformat()} 生成失败：{exc}")
+            continue
         if path:
             generated_paths.append(path)
 
+    if failed_dates:
+        print("[警告] 以下日期生成失败：")
+        for date_str, error in failed_dates:
+            print(f"  - {date_str}: {error}")
+
     if not generated_paths:
         print("[完成] 没有生成任何日报。")
+        if failed_dates:
+            sys.exit(1)
 
 
 if __name__ == "__main__":

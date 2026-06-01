@@ -95,6 +95,30 @@ class FetchArxivTests(unittest.TestCase):
         self.assertEqual(len(fake_completions.calls), 2)
         self.assertEqual(fake_completions.calls[1]["messages"][-1]["content"], "继续")
 
+    def test_summarize_paper_safely_uses_static_fallback_after_double_failure(self) -> None:
+        paper = {
+            "arxiv_id": "2606.00001v1",
+            "title": "Test Paper",
+            "abstract": "Test abstract",
+            "authors": ["Test Author"],
+            "categories": ["cs.IR"],
+            "published": "2026-06-01",
+            "url": "https://arxiv.org/abs/2606.00001v1",
+        }
+
+        with (
+            mock.patch.object(fetch_papers, "summarize_paper", side_effect=RuntimeError("full failed")),
+            mock.patch.object(
+                fetch_papers,
+                "summarize_paper_with_abstract_fallback",
+                side_effect=RuntimeError("fallback failed"),
+            ),
+        ):
+            result = fetch_papers.summarize_paper_safely(SimpleNamespace(), paper)
+
+        self.assertIn("自动解读失败", result["summary_zh"])
+        self.assertIn("fallback failed", result["summary_zh"])
+
     def test_render_post_uses_plain_yaml_quotes_and_permalink(self) -> None:
         content = fetch_papers.render_post(
             papers=[
