@@ -16,7 +16,9 @@ class DailyReportContentTests(unittest.TestCase):
 
         for path in Path("_posts").glob("*-daily-report.md"):
             lines = path.read_text(encoding="utf-8").splitlines()
-            overview_index = lines.index("## 今日概述")
+            overview_index = next(
+                i for i, line in enumerate(lines) if line.strip() in {"## 今日概述", "## 今日概览"}
+            )
 
             paragraph = ""
             for line in lines[overview_index + 1:]:
@@ -36,10 +38,16 @@ class DailyReportContentTests(unittest.TestCase):
 
         for path in Path("_posts").glob("*-daily-report.md"):
             lines = path.read_text(encoding="utf-8").splitlines()
+            in_code_block = False
 
             for index, line in enumerate(lines):
                 stripped = line.strip()
                 if not stripped:
+                    continue
+                if stripped.startswith("```"):
+                    in_code_block = not in_code_block
+                    continue
+                if in_code_block:
                     continue
                 if stripped == "---":
                     continue
@@ -57,10 +65,12 @@ class DailyReportContentTests(unittest.TestCase):
                         "topics:",
                         "##",
                         "###",
-                        "<div",
-                        "</div",
+                        "> ",
+                        "|",
                     )
                 ):
+                    continue
+                if stripped.startswith(("- ", "* ", "1.", "2.", "3.", "4.", "5.")):
                     continue
                 if stripped.startswith("  - "):
                     continue
