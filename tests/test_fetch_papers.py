@@ -24,6 +24,37 @@ class FetchArxivTests(unittest.TestCase):
         self.assertFalse(fetch_papers._looks_like_complete_text("这是一个还没写完的结论，因为"))
         self.assertFalse(fetch_papers._looks_like_complete_text("> **关键洞察**："))
         self.assertTrue(fetch_papers._looks_like_complete_text("这是一个完整结论。"))
+        self.assertTrue(
+            fetch_papers._looks_like_complete_text("> **一句话总结**：这是一句完整总结。")
+        )
+
+    def test_clean_generated_markdown_fixes_common_format_glitches(self) -> None:
+        raw = "\n".join(
+            [
+                "## 二、核心方法",
+                "**",
+                "",
+                "**主要风险**：需要更多验证",
+                "",
+                "，实际部署前需先灰度验证。",
+                "",
+                "**解决的问题**：使用未来交互",
+                "",
+                "**为什么有效**：用熵控制未来监督强度。",
+                "",
+                "| ML-20",
+                "| 数据集 | 指标 |",
+                "|--------|------|",
+            ]
+        )
+
+        cleaned = fetch_papers._clean_generated_markdown(raw)
+
+        self.assertNotIn("\n**\n", cleaned)
+        self.assertIn("**主要风险**：需要更多验证，实际部署前需先灰度验证。", cleaned)
+        self.assertNotIn("**解决的问题**：使用未来交互", cleaned)
+        self.assertNotIn("| ML-20", cleaned)
+        self.assertIn("| 数据集 | 指标 |", cleaned)
 
     def test_get_default_target_date_uses_report_timezone(self) -> None:
         now = datetime.datetime(2026, 5, 31, 21, 5, tzinfo=datetime.timezone.utc)
@@ -99,6 +130,41 @@ class FetchArxivTests(unittest.TestCase):
         self.assertEqual(text, "第一段未写完\n\n第二段补完。")
         self.assertEqual(len(fake_completions.calls), 2)
         self.assertEqual(fake_completions.calls[1]["messages"][-1]["content"], "继续")
+
+    def test_complete_with_continuation_retries_after_empty_response(self) -> None:
+        class FakeCompletions:
+            def __init__(self) -> None:
+                self.calls = []
+                self.responses = [
+                    ("", "stop"),
+                    ("这是补回来的完整结果。", "stop"),
+                ]
+
+            def create(self, **kwargs):
+                self.calls.append(kwargs)
+                content, finish_reason = self.responses.pop(0)
+                return SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            message=SimpleNamespace(content=content),
+                            finish_reason=finish_reason,
+                        )
+                    ]
+                )
+
+        fake_completions = FakeCompletions()
+        fake_client = SimpleNamespace(chat=SimpleNamespace(completions=fake_completions))
+
+        with mock.patch("fetch_papers.time.sleep"):
+            text = fetch_papers.complete_with_continuation(
+                fake_client,
+                "prompt",
+                max_tokens=100,
+                continuation_prompt="继续",
+            )
+
+        self.assertEqual(text, "这是补回来的完整结果。")
+        self.assertEqual(len(fake_completions.calls), 2)
 
     def test_summarize_paper_safely_uses_static_fallback_after_double_failure(self) -> None:
         paper = {

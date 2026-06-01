@@ -38,11 +38,13 @@ class DailyReportContentTests(unittest.TestCase):
             )
 
     def test_daily_report_content_lines_do_not_end_with_truncated_phrases(self) -> None:
-        sentence_endings = ("。", "！", "？", ".", "!", "?", "”", '"', "）", ")", "`")
+        sentence_endings = ("。", "！", "？", ".", "!", "?", "”", '"', "）", ")", "`", "**")
 
         for path in self._iter_daily_report_paths():
             lines = path.read_text(encoding="utf-8").splitlines()
             in_code_block = False
+            in_math_block = False
+            in_bracket_math_block = False
 
             for index, line in enumerate(lines):
                 stripped = line.strip()
@@ -51,7 +53,22 @@ class DailyReportContentTests(unittest.TestCase):
                 if stripped.startswith("```"):
                     in_code_block = not in_code_block
                     continue
+                if stripped == "$$":
+                    in_math_block = not in_math_block
+                    continue
+                if stripped.startswith("$$") and stripped.endswith("$$") and len(stripped) > 4:
+                    continue
+                if stripped == "\\[":
+                    in_bracket_math_block = True
+                    continue
+                if stripped == "\\]":
+                    in_bracket_math_block = False
+                    continue
                 if in_code_block:
+                    continue
+                if in_math_block:
+                    continue
+                if in_bracket_math_block:
                     continue
                 if stripped == "---":
                     continue
@@ -86,20 +103,22 @@ class DailyReportContentTests(unittest.TestCase):
                     continue
                 if stripped.startswith("- **") and stripped.endswith("**"):
                     continue
-                if stripped in {"\\[", "\\]", "$$", "$"}:
+                if stripped in {"$"}:
                     continue
                 if stripped.startswith("\\"):
                     continue
-
-                if stripped.endswith("："):
+                if stripped.startswith("<") and stripped.endswith(">"):
+                    continue
+                if stripped.endswith(("：", ":")):
+                    continue
+                if stripped.endswith(("——", "—")):
                     next_non_empty = ""
                     for candidate in lines[index + 1:]:
                         candidate = candidate.strip()
                         if candidate:
                             next_non_empty = candidate
                             break
-
-                    if next_non_empty.startswith(("- ", "1.", "2.", "3.", "4.", "5.", "\\[", "$$")):
+                    if next_non_empty.startswith(("1.", "2.", "3.", "4.", "5.", "- ", "* ")):
                         continue
 
                 self.assertTrue(

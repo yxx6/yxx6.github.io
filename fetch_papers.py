@@ -289,7 +289,7 @@ def _looks_like_complete_text(text: str) -> bool:
     if not last_line:
         return False
 
-    if last_line.startswith(("#", "##", "###", "- ", "* ", "> ")):
+    if last_line.startswith(("#", "##", "###", "- ", "* ")):
         return False
 
     if re.search(r"[，、：；（\[【\-\*\/]$", last_line):
@@ -301,6 +301,69 @@ def _looks_like_complete_text(text: str) -> bool:
     return bool(re.search(r"[。！？.!?）\]】\"”'》]$", last_line))
 
 
+def _clean_generated_markdown(text: str) -> str:
+    lines = text.splitlines()
+    first_pass_lines: list[str] = []
+    in_code_block = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        if stripped.startswith("```"):
+            in_code_block = not in_code_block
+            first_pass_lines.append(line)
+            continue
+
+        if not in_code_block:
+            if stripped == "**":
+                continue
+            if stripped.startswith("|") and stripped.count("|") <= 1:
+                continue
+            if (
+                stripped
+                and re.match(r"^[，。；：、]", stripped)
+                and first_pass_lines
+                and any(existing.strip() for existing in first_pass_lines)
+            ):
+                while first_pass_lines and not first_pass_lines[-1].strip():
+                    first_pass_lines.pop()
+                if first_pass_lines and not first_pass_lines[-1].strip().startswith(("|", "```")):
+                    first_pass_lines[-1] = first_pass_lines[-1].rstrip() + stripped
+                    continue
+            if (
+                stripped
+                and re.match(r"^[，。；：、]", stripped)
+                and first_pass_lines
+                and first_pass_lines[-1].strip()
+                and not first_pass_lines[-1].strip().startswith(("|", "```"))
+            ):
+                first_pass_lines[-1] = first_pass_lines[-1].rstrip() + stripped
+                continue
+
+        if stripped or not first_pass_lines or first_pass_lines[-1].strip():
+            first_pass_lines.append(line)
+
+    final_lines: list[str] = []
+    for index, line in enumerate(first_pass_lines):
+        stripped = line.strip()
+        if (
+            stripped.startswith("**")
+            and "：" in stripped
+            and not stripped.endswith(("。", "！", "？", ".", "!", "?", "：", ":", "**"))
+        ):
+            next_non_empty = ""
+            for candidate in first_pass_lines[index + 1:]:
+                candidate = candidate.strip()
+                if candidate:
+                    next_non_empty = candidate
+                    break
+            if next_non_empty.startswith(("**", "##", "###", ">", "-", "*", "|", "```")):
+                continue
+        final_lines.append(line)
+
+    return "\n".join(final_lines).strip()
+
+
 def complete_with_continuation(
     client: OpenAI,
     prompt: str,
@@ -310,23 +373,30 @@ def complete_with_continuation(
 ) -> str:
     messages = [{"role": "user", "content": prompt}]
     fragments: list[str] = []
+    empty_response_retries = 2
 
     for _ in range(LLM_MAX_CONTINUATIONS):
-        response = client.chat.completions.create(
-            model=AI_MODEL,
-            max_tokens=max_tokens,
-            messages=messages,
-        )
-        choice = response.choices[0]
-        fragment = _extract_response_text(choice.message.content).strip()
-        if not fragment:
-            raise RuntimeError("模型返回了空内容，无法生成日报。")
+        fragment = ""
+        choice = None
+        for attempt in range(empty_response_retries + 1):
+            response = client.chat.completions.create(
+                model=AI_MODEL,
+                max_tokens=max_tokens,
+                messages=messages,
+            )
+            choice = response.choices[0]
+            fragment = _extract_response_text(choice.message.content).strip()
+            if fragment:
+                break
+            if attempt == empty_response_retries:
+                raise RuntimeError("模型连续返回空内容，无法生成日报。")
+            time.sleep(1)
 
         fragments.append(fragment)
         merged_text = "\n\n".join(fragments).strip()
         finish_reason = getattr(choice, "finish_reason", None)
         if finish_reason != "length" and _looks_like_complete_text(merged_text):
-            return merged_text
+            return _clean_generated_markdown(merged_text)
 
         messages.extend(
             [
@@ -337,7 +407,7 @@ def complete_with_continuation(
 
     merged_text = "\n\n".join(fragments).strip()
     if _looks_like_complete_text(merged_text):
-        return merged_text
+        return _clean_generated_markdown(merged_text)
 
     raise RuntimeError("模型输出多次续写后仍像是半截内容，已停止以避免写入截断文本。")
 
@@ -621,9 +691,9 @@ def render_post(papers: list[dict], overview: str, date_str: str) -> str:
 
 
 def write_post(content: str, date_str: str) -> str:
-    os.makedirs(POSTS_DIR, exist_ok=True)
-    filename = f"{date_str}-daily-report.md"
-    path = os.path.join(POSTS_DIR, filename)
+    day_dir = os.path.join(POSTS_DIR, date_str)
+    os.makedirs(day_dir, exist_ok=True)
+    path = os.path.join(day_dir, "index.md")
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
     return path

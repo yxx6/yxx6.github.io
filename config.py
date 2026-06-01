@@ -60,5 +60,6 @@ REPORT_TIMEZONE = "Asia/Shanghai"
 
 # -------- 输出设置 --------
 
-# Jekyll _posts 目录路径（相对于本脚本）
-POSTS_DIR = "_posts"
+# 日报页面输出目录（相对于本脚本）
+# 站点当前使用 daily/YYYY-MM-DD/index.md 作为日报落盘结构
+POSTS_DIR = "daily"
