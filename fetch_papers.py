@@ -273,6 +273,34 @@ def _extract_response_text(message_content: object) -> str:
     return str(message_content or "")
 
 
+def _looks_like_complete_text(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped:
+        return False
+
+    if stripped.endswith(("```", "---")):
+        return True
+
+    lines = [line.rstrip() for line in stripped.splitlines() if line.strip()]
+    if not lines:
+        return False
+
+    last_line = lines[-1].strip()
+    if not last_line:
+        return False
+
+    if last_line.startswith(("#", "##", "###", "- ", "* ", "> ")):
+        return False
+
+    if re.search(r"[，、：；（\[【\-\*\/]$", last_line):
+        return False
+
+    if re.search(r"(和|与|及|或|并|以及|因为|所以|如果|但|而且|其中|例如|包括)$", last_line):
+        return False
+
+    return bool(re.search(r"[。！？.!?）\]】\"”'》]$", last_line))
+
+
 def complete_with_continuation(
     client: OpenAI,
     prompt: str,
@@ -295,8 +323,10 @@ def complete_with_continuation(
             raise RuntimeError("模型返回了空内容，无法生成日报。")
 
         fragments.append(fragment)
-        if getattr(choice, "finish_reason", None) != "length":
-            return "\n\n".join(fragments).strip()
+        merged_text = "\n\n".join(fragments).strip()
+        finish_reason = getattr(choice, "finish_reason", None)
+        if finish_reason != "length" and _looks_like_complete_text(merged_text):
+            return merged_text
 
         messages.extend(
             [
@@ -305,7 +335,11 @@ def complete_with_continuation(
             ]
         )
 
-    raise RuntimeError("模型输出多次续写后仍被截断，已停止以避免写入半截内容。")
+    merged_text = "\n\n".join(fragments).strip()
+    if _looks_like_complete_text(merged_text):
+        return merged_text
+
+    raise RuntimeError("模型输出多次续写后仍像是半截内容，已停止以避免写入截断文本。")
 
 
 # ─────────────────────────────────────────

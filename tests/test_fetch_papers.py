@@ -20,6 +20,11 @@ def _build_entry(arxiv_id: str, published: str, title: str) -> str:
 
 
 class FetchArxivTests(unittest.TestCase):
+    def test_complete_text_heuristic_rejects_half_sentence(self) -> None:
+        self.assertFalse(fetch_papers._looks_like_complete_text("这是一个还没写完的结论，因为"))
+        self.assertFalse(fetch_papers._looks_like_complete_text("> **关键洞察**："))
+        self.assertTrue(fetch_papers._looks_like_complete_text("这是一个完整结论。"))
+
     def test_get_default_target_date_uses_report_timezone(self) -> None:
         now = datetime.datetime(2026, 5, 31, 21, 5, tzinfo=datetime.timezone.utc)
 

@@ -49,19 +49,72 @@ jobs:
           FETCH_END_DATE: ${{ github.event_name == 'push' && '2026-06-01' || inputs.end_date }}
         shell: bash
         run: |
-          args=()
-          if [ -n "$FETCH_DATE" ]; then
-            args+=(--date "$FETCH_DATE")
-          fi
-          if [ -n "$FETCH_START_DATE" ] || [ -n "$FETCH_END_DATE" ]; then
-            args+=(--start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE")
-          fi
-          python fetch_papers.py "${args[@]}"
-
-      - name: Commit and push new post
-        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$FETCH_DATE" ]; then
+            python fetch_papers.py --date "$FETCH_DATE"
+            git add _posts/
+            git diff --cached --quiet || git commit -m "daily paper: $FETCH_DATE"
+            git pull --rebase origin main
+            git push
+            exit 0
+          fi
+
+          if [ -n "$FETCH_START_DATE" ] && [ -n "$FETCH_END_DATE" ]; then
+            mapfile -t dates < <(python - <<'PY'
+from datetime import date, timedelta
+import os
+
+start = date.fromisoformat(os.environ["FETCH_START_DATE"])
+end = date.fromisoformat(os.environ["FETCH_END_DATE"])
+current = start
+while current <= end:
+    print(current.isoformat())
+    current += timedelta(days=1)
+PY
+)
+
+            failed=()
+            for day in "${dates[@]}"; do
+              echo "[backfill] generating $day"
+              temp_dir="$(mktemp -d)"
+              cp -R . "$temp_dir/repo"
+              cd "$temp_dir/repo"
+
+              if ! python fetch_papers.py --date "$day"; then
+                echo "[backfill] failed for $day"
+                failed+=("$day")
+                cd "$GITHUB_WORKSPACE"
+                rm -rf "$temp_dir"
+                continue
+              fi
+
+              git add _posts/
+              if git diff --cached --quiet; then
+                echo "[backfill] no changes for $day"
+                cd "$GITHUB_WORKSPACE"
+                rm -rf "$temp_dir"
+                continue
+              fi
+
+              git commit -m "daily paper: $day"
+              git pull --rebase origin main
+              git push
+              cd "$GITHUB_WORKSPACE"
+              git pull --rebase origin main
+              rm -rf "$temp_dir"
+            done
+
+            if [ "${#failed[@]}" -gt 0 ]; then
+              printf '[backfill] failed dates: %s\n' "${failed[*]}"
+              exit 1
+            fi
+
+            exit 0
+          fi
+
+          python fetch_papers.py
           git add _posts/
           git diff --cached --quiet || git commit -m "daily paper: $(TZ=Asia/Shanghai date +%Y-%m-%d)"
           git pull --rebase origin main
