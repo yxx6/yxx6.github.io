@@ -5,8 +5,10 @@ permalink: /daily/
 author_profile: true
 ---
 
-{% assign daily_posts = site.posts | where_exp: "p", "p.paper_count and p.url contains '/daily/'" %}
-{% assign daily_pages = site.pages | where_exp: "p", "p.paper_count and p.url contains '/daily/'" %}
+{% assign daily_posts = site.posts | where_exp: "p", "p.paper_count" %}
+{% assign daily_posts = daily_posts | where_exp: "p", "p.url contains '/daily/'" %}
+{% assign daily_pages = site.pages | where_exp: "p", "p.paper_count" %}
+{% assign daily_pages = daily_pages | where_exp: "p", "p.url contains '/daily/'" %}
 {% assign daily_entries = daily_posts | concat: daily_pages | sort: "date" | reverse %}
 {% if daily_entries.size > 0 %}
   {% for post in daily_entries %}
