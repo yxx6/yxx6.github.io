@@ -293,14 +293,12 @@ permalink: /:categories/:title/
 timezone: Etc/UTC
 
 plugins:
-  - jekyll-feed
   - jekyll-gist
   - jekyll-paginate
   - jekyll-redirect-from
   - jemoji
 
 whitelist:
-  - jekyll-feed
   - jekyll-gist
   - jekyll-paginate
   - jekyll-redirect-from
