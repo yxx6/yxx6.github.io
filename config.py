@@ -35,8 +35,15 @@ AI_MODEL = "deepseek-v4-pro"
 # 摘要语言
 SUMMARY_LANGUAGE = "中文"
 
-# 每篇论文解读的 token 上限（深度解读需要更多输出）
-SUMMARY_MAX_TOKENS = 2000
+# 每篇论文解读的 token 上限
+# 现在会在输出被截断时自动续写，因此这里可以适度提高一点，减少“半句话收尾”
+SUMMARY_MAX_TOKENS = 2400
+
+# 每日综述的 token 上限
+DAILY_OVERVIEW_MAX_TOKENS = 900
+
+# 若模型因为长度被截断，最多自动续写几轮
+LLM_MAX_CONTINUATIONS = 3
 
 # -------- 文章生成设置 --------
 
@@ -46,6 +53,10 @@ POST_TITLE_TEMPLATE = "推荐算法日报 {date}"
 # 文章中每个"主题块"至少要有几篇论文才单独成节
 # 低于此数量的主题会合并到"其他"
 MIN_PAPERS_PER_SECTION = 2
+
+# 生成日报时使用的业务时区
+# GitHub Actions 运行在 UTC，本地/线上都统一按北京时间取“昨天”
+REPORT_TIMEZONE = "Asia/Shanghai"
 
 # -------- 输出设置 --------
 

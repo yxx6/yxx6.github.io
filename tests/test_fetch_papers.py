@@ -1,5 +1,6 @@
 import datetime
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 import fetch_papers
@@ -19,6 +20,23 @@ def _build_entry(arxiv_id: str, published: str, title: str) -> str:
 
 
 class FetchArxivTests(unittest.TestCase):
+    def test_get_default_target_date_uses_report_timezone(self) -> None:
+        now = datetime.datetime(2026, 5, 31, 21, 5, tzinfo=datetime.timezone.utc)
+
+        self.assertEqual(
+            fetch_papers.get_default_target_date(now),
+            datetime.date(2026, 5, 31),
+        )
+
+    def test_iter_target_dates_supports_backfill_range(self) -> None:
+        self.assertEqual(
+            fetch_papers.iter_target_dates(
+                start_date_str="2026-05-30",
+                end_date_str="2026-05-31",
+            ),
+            [datetime.date(2026, 5, 30), datetime.date(2026, 5, 31)],
+        )
+
     def test_fetch_arxiv_excludes_papers_after_target_date(self) -> None:
         feed = f"""<?xml version="1.0" encoding="UTF-8"?>
         <feed xmlns="http://www.w3.org/2005/Atom">
@@ -41,6 +59,41 @@ class FetchArxivTests(unittest.TestCase):
             [paper["arxiv_id"] for paper in papers],
             ["target-day-paper", "previous-day-paper"],
         )
+
+    def test_complete_with_continuation_retries_after_length_finish(self) -> None:
+        class FakeCompletions:
+            def __init__(self) -> None:
+                self.calls = []
+                self.responses = [
+                    ("第一段未写完", "length"),
+                    ("第二段补完。", "stop"),
+                ]
+
+            def create(self, **kwargs):
+                self.calls.append(kwargs)
+                content, finish_reason = self.responses.pop(0)
+                return SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            message=SimpleNamespace(content=content),
+                            finish_reason=finish_reason,
+                        )
+                    ]
+                )
+
+        fake_completions = FakeCompletions()
+        fake_client = SimpleNamespace(chat=SimpleNamespace(completions=fake_completions))
+
+        text = fetch_papers.complete_with_continuation(
+            fake_client,
+            "prompt",
+            max_tokens=100,
+            continuation_prompt="继续",
+        )
+
+        self.assertEqual(text, "第一段未写完\n\n第二段补完。")
+        self.assertEqual(len(fake_completions.calls), 2)
+        self.assertEqual(fake_completions.calls[1]["messages"][-1]["content"], "继续")
 
     def test_render_post_uses_plain_yaml_quotes_and_permalink(self) -> None:
         content = fetch_papers.render_post(

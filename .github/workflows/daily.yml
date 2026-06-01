@@ -4,7 +4,20 @@ on:
   schedule:
     # 每天北京时间 05:00 运行（UTC+8，对应 UTC 21:00，即前一天）
     - cron: "0 21 * * *"
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "手动生成某一天的日报（YYYY-MM-DD）"
+        required: false
+        type: string
+      start_date:
+        description: "批量补日报开始日期（YYYY-MM-DD）"
+        required: false
+        type: string
+      end_date:
+        description: "批量补日报结束日期（YYYY-MM-DD）"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -27,13 +40,25 @@ jobs:
       - name: Fetch papers and generate post
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: python fetch_papers.py
+          FETCH_DATE: ${{ inputs.date }}
+          FETCH_START_DATE: ${{ inputs.start_date }}
+          FETCH_END_DATE: ${{ inputs.end_date }}
+        shell: bash
+        run: |
+          args=()
+          if [ -n "$FETCH_DATE" ]; then
+            args+=(--date "$FETCH_DATE")
+          fi
+          if [ -n "$FETCH_START_DATE" ] || [ -n "$FETCH_END_DATE" ]; then
+            args+=(--start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE")
+          fi
+          python fetch_papers.py "${args[@]}"
 
       - name: Commit and push new post
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add _posts/
-          git diff --cached --quiet || git commit -m "daily paper: $(date +%Y-%m-%d)"
+          git diff --cached --quiet || git commit -m "daily paper: $(TZ=Asia/Shanghai date +%Y-%m-%d)"
           git pull --rebase origin main
           git push

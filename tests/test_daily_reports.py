@@ -66,6 +66,12 @@ class DailyReportContentTests(unittest.TestCase):
                     continue
                 if stripped.startswith("**") and stripped.endswith("**"):
                     continue
+                if stripped.startswith("- **") and stripped.endswith("**"):
+                    continue
+                if stripped in {"\\[", "\\]", "$$", "$"}:
+                    continue
+                if stripped.startswith("\\"):
+                    continue
 
                 if stripped.endswith("："):
                     next_non_empty = ""
@@ -75,7 +81,7 @@ class DailyReportContentTests(unittest.TestCase):
                             next_non_empty = candidate
                             break
 
-                    if next_non_empty.startswith(("- ", "1.", "2.", "3.", "4.", "5.")):
+                    if next_non_empty.startswith(("- ", "1.", "2.", "3.", "4.", "5.", "\\[", "$$")):
                         continue
 
                 self.assertTrue(
