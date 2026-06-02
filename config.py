@@ -12,6 +12,7 @@ SEARCH_TOPICS = [
     "large language model recommendation",
     "sequential recommendation",
     "retrieval augmented generation recommendation",
+    "semantic id recommendation",
 ]
 
 # 每次最多拉取多少篇论文（建议 10-30，太多 API 费用高）
