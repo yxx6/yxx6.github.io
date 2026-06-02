@@ -54,7 +54,7 @@ jobs:
 
           if [ -n "$FETCH_DATE" ]; then
             python fetch_papers.py --date "$FETCH_DATE"
-            git add _posts/
+            git add daily/ _posts/
             git diff --cached --quiet || git commit -m "daily paper: $FETCH_DATE"
             git pull --rebase origin main
             git push
@@ -90,7 +90,7 @@ PY
                 continue
               fi
 
-              git add _posts/
+              git add daily/ _posts/
               if git diff --cached --quiet; then
                 echo "[backfill] no changes for $day"
                 cd "$GITHUB_WORKSPACE"
@@ -115,7 +115,7 @@ PY
           fi
 
           python fetch_papers.py
-          git add _posts/
+          git add daily/ _posts/
           git diff --cached --quiet || git commit -m "daily paper: $(TZ=Asia/Shanghai date +%Y-%m-%d)"
           git pull --rebase origin main
           git push

@@ -14,6 +14,7 @@ import argparse
 import datetime
 import urllib.request
 import urllib.parse
+import urllib.error
 import xml.etree.ElementTree as ET
 
 try:
@@ -190,6 +191,21 @@ def fetch_arxiv(target_date: datetime.date) -> list[dict]:
             time.sleep(3 + attempt * 5)  # 首次等3秒，每次重试多等5秒
             xml_data = _http_get(url, timeout=60)
             break
+        except urllib.error.HTTPError as e:
+            retry_after = e.headers.get("Retry-After") if e.headers else None
+            extra_sleep = 0
+            if e.code == 429:
+                try:
+                    extra_sleep = max(30, int(retry_after or 0))
+                except ValueError:
+                    extra_sleep = 30
+                if attempt < 4:
+                    print(f"[arXiv] 第{attempt+1}次请求失败: {e}，{extra_sleep} 秒后重试")
+                    time.sleep(extra_sleep)
+                    continue
+            print(f"[arXiv] 第{attempt+1}次请求失败: {e}")
+            if attempt == 4:
+                raise
         except Exception as e:
             print(f"[arXiv] 第{attempt+1}次请求失败: {e}")
             if attempt == 4:
