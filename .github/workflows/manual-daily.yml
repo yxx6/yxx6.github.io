@@ -1,0 +1,44 @@
+name: Manual Daily Paper
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Generate one daily report, format YYYY-MM-DD"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate daily report
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          FETCH_DATE: ${{ inputs.date }}
+        run: python fetch_papers.py --date "$FETCH_DATE"
+
+      - name: Commit and push daily report
+        env:
+          FETCH_DATE: ${{ inputs.date }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add daily/ _posts/
+          git diff --cached --quiet || git commit -m "daily paper: $FETCH_DATE"
+          git pull --rebase origin main
+          git push
