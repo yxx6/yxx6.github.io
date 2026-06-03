@@ -45,6 +45,7 @@ class DailyReportContentTests(unittest.TestCase):
             self.assertNotIn(r"\)", text, path.as_posix())
             self.assertNotIn(r"\[", text, path.as_posix())
             self.assertNotIn(r"\]", text, path.as_posix())
+            self.assertNotIn("|V|", text, path.as_posix())
 
     def test_daily_report_content_lines_do_not_end_with_truncated_phrases(self) -> None:
         sentence_endings = ("。", "！", "？", ".", "!", "?", "”", '"', "）", ")", "`", "**")
