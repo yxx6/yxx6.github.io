@@ -377,7 +377,7 @@ def _clean_generated_markdown(text: str) -> str:
                 continue
         final_lines.append(line)
 
-    return _normalize_math_markdown("\n".join(final_lines)).strip()
+    return _normalize_generated_math_markdown("\n".join(final_lines)).strip()
 
 
 def _normalize_math_markdown(text: str) -> str:
@@ -430,6 +430,156 @@ def _normalize_math_markdown(text: str) -> str:
             continue
         parts[index] = apply_outside_code_blocks(part)
     return "".join(parts)
+
+
+def _latexify_formula_text(text: str) -> str:
+    formula = text.strip()
+    formula = formula.replace("ŷ", r"\hat{y}")
+    formula = re.sub(r"\by_hat\b", r"\\hat{y}", formula)
+    formula = re.sub(r"\b([A-Za-z])_\{([^}]+)\}", r"\1_{\2}", formula)
+    formula = re.sub(r"\b([A-Za-z])_([A-Za-z0-9]+)\b", r"\1_{\2}", formula)
+    formula = re.sub(r"([A-Za-z])\^\(([^)]+)\)", r"\1^{(\2)}", formula)
+
+    greek_names = {
+        "α": "alpha",
+        "β": "beta",
+        "γ": "gamma",
+        "δ": "delta",
+        "η": "eta",
+        "θ": "theta",
+        "λ": "lambda",
+        "μ": "mu",
+        "ρ": "rho",
+        "σ": "sigma",
+        "τ": "tau",
+        "φ": "phi",
+        "ω": "omega",
+    }
+    for symbol, name in greek_names.items():
+        formula = re.sub(fr"{symbol}_?([A-Za-z0-9]+)", fr"\\{name}_{{\1}}", formula)
+        formula = formula.replace(symbol, fr"\{name}")
+
+    formula = re.sub(r"\bomega\b", r"\\omega", formula)
+    formula = re.sub(r"\btau\b", r"\\tau", formula)
+    formula = re.sub(r"\blambda\b", r"\\lambda", formula)
+    formula = formula.replace("∈", r"\in")
+    formula = formula.replace("ℝ", r"\mathbb{R}")
+    formula = formula.replace("⊙", r"\odot")
+    formula = formula.replace("·", r"\cdot")
+    formula = re.sub(r"\bexp\s*\(", r"\\exp(", formula)
+    return formula
+
+
+def _normalize_common_bare_formula_tokens(text: str) -> str:
+    """
+    Convert common LLM-style pseudo math into MathJax spans.
+
+    This is intentionally conservative: it handles the recurring report
+    artifacts we have seen, while leaving plaintext flow diagrams alone.
+    """
+
+    def math_span(formula: str) -> str:
+        return f"${_latexify_formula_text(formula)}$"
+
+    def apply_outside_math(block: str, transform) -> str:
+        parts = re.split(
+            r"(\$\$.*?\$\$|(?<!\$)\$(?!\$)[^$\n]+?(?<!\\)\$(?!\$))",
+            block,
+            flags=re.S,
+        )
+        for index, part in enumerate(parts):
+            if part.startswith("$"):
+                continue
+            parts[index] = transform(part)
+        return "".join(parts)
+
+    def normalize_phrases(segment: str) -> str:
+        segment = re.sub(
+            r"`([^`\n]*(?:y_hat|h\^|x\^|g\^|ω|τ|λ|α|β|η|δ|θ|ρ|φ|exp\(|\^\(|_\{|[A-Za-z]_[A-Za-z])[^`\n]*)`",
+            lambda match: math_span(match.group(1)),
+            segment,
+        )
+        segment = re.sub(
+            r"(?:omega|ω)\s*=\s*exp\(-H\(y_hat\)\s*/\s*(?:tau|τ)\)",
+            lambda match: r"$\omega = \exp(-H(\hat{y})/\tau)$",
+            segment,
+        )
+        segment = re.sub(
+            r"(?:omega|ω)\s*=\s*exp\(-H\(ŷ\)\s*/\s*(?:tau|τ)\)",
+            lambda match: r"$\omega = \exp(-H(\hat{y})/\tau)$",
+            segment,
+        )
+        segment = re.sub(
+            r"(?:omega|ω)\s*=\s*exp\(-H\s*/\s*(?:tau|τ)\)",
+            lambda match: r"$\omega = \exp(-H/\tau)$",
+            segment,
+        )
+        segment = re.sub(r"\bH\(y_hat\)", lambda match: r"$H(\hat{y})$", segment)
+        segment = re.sub(
+            r"\by_hat\^\(([^)]+)\)",
+            lambda match: rf"$\hat{{y}}^{{({match.group(1)})}}$",
+            segment,
+        )
+        segment = re.sub(r"\by_hat\b", lambda match: r"$\hat{y}$", segment)
+        segment = re.sub(
+            r"\b([A-Za-z])\^\(([^)]+)\)",
+            lambda match: rf"${match.group(1)}^{{({match.group(2)})}}$",
+            segment,
+        )
+        segment = re.sub(
+            r"([δ])\^\(([^)]+)\)",
+            lambda match: rf"${_latexify_formula_text(match.group(1))}^{{({match.group(2)})}}$",
+            segment,
+        )
+        segment = re.sub(r"\bh\^z\b", r"$h^z$", segment)
+        segment = re.sub(
+            r"\b([A-Za-z])_([A-Za-z0-9]+)\b",
+            lambda match: rf"${match.group(1)}_{{{match.group(2)}}}$",
+            segment,
+        )
+        return segment
+
+    def wrap_standalone_greek(segment: str) -> str:
+        greek_names = {
+            "α": "alpha",
+            "β": "beta",
+            "γ": "gamma",
+            "δ": "delta",
+            "η": "eta",
+            "θ": "theta",
+            "λ": "lambda",
+            "μ": "mu",
+            "ρ": "rho",
+            "σ": "sigma",
+            "τ": "tau",
+            "φ": "phi",
+            "ω": "omega",
+        }
+        for symbol, name in greek_names.items():
+            segment = re.sub(
+                fr"(?<![A-Za-z0-9_\\$]){symbol}_?([A-Za-z0-9]+)",
+                lambda match: rf"$\{name}_{{{match.group(1)}}}$",
+                segment,
+            )
+            segment = re.sub(
+                fr"(?<![A-Za-z0-9_\\$]){symbol}(?![A-Za-z0-9_])",
+                lambda match, name=name: rf"$\{name}$",
+                segment,
+            )
+        return segment
+
+    parts = re.split(r"(```.*?```)", text, flags=re.S)
+    for index, part in enumerate(parts):
+        if part.startswith("```"):
+            continue
+        normalized = apply_outside_math(part, normalize_phrases)
+        parts[index] = apply_outside_math(normalized, wrap_standalone_greek)
+    return "".join(parts)
+
+
+def _normalize_generated_math_markdown(text: str) -> str:
+    text = _normalize_math_markdown(text)
+    return _normalize_common_bare_formula_tokens(text)
 
 
 def complete_with_continuation(
@@ -508,7 +658,7 @@ def summarize_paper(client: OpenAI, paper: dict) -> dict:
 4. 多用“关键洞察”“工程挑战”“反直觉发现”“对从业者的建议”这类小节。
 5. 关键结论用 `>` blockquote 或单独加粗段落突出。
 6. 表格必须使用标准 Markdown 表格。
-7. 方法流程、训练/推理链路、Semantic ID / Token 路径优先用 `plaintext` 代码块；只有结构确实复杂时才用 Mermaid。
+7. 方法流程、训练/推理链路、Semantic ID / Token 路径优先用 `plaintext` 代码块；代码块只放流程图，不放公式推导；只有结构确实复杂时才用 Mermaid。
 8. 除非论文没有提供，否则不要省略模块名、目标函数、训练/推理路径、实验设置、baseline 名称和关键数字；如果论文没写，请明确写“论文未报告”，禁止脑补。
 9. 数学变量和公式必须使用标准 LaTeX，并用 `$...$` 或 `$$...$$` 包裹；不要裸写 `y_hat`、`h^(k)`、`omega = exp(...)`、`ω = exp(...)`，也不要用反引号包公式。示例：`$\hat{y}^{(k)}$`、`$\omega = \exp(-H(\hat{y})/\tau)$`、`$\lvert V\rvert$`。
 

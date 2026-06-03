@@ -32,6 +32,9 @@ jobs:
           FETCH_DATE: ${{ inputs.date }}
         run: python fetch_papers.py --date "$FETCH_DATE"
 
+      - name: Validate generated content
+        run: python -m unittest discover -s tests
+
       - name: Commit and push daily report
         env:
           FETCH_DATE: ${{ inputs.date }}

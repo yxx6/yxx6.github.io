@@ -49,6 +49,8 @@ class FetchArxivTests(unittest.TestCase):
                 "复杂度是 $O(|V| \\times L \\times d_{model})$。",
                 "旧写法是 \\(N \\ll |V|\\)。",
                 "范数是 $\\|A\\|_F^2$。",
+                "预测 y_hat^(k)，再用 H(y_hat) 和 ω = exp(-H(y_hat)/τ) 调权。",
+                "投影向量写成 `h^z`，温度 τ 不能裸露。",
             ]
         )
 
@@ -62,6 +64,12 @@ class FetchArxivTests(unittest.TestCase):
         self.assertIn(r"$O(\lvert V\rvert \times L \times d_{model})$", cleaned)
         self.assertIn(r"$N \ll \lvert V\rvert$", cleaned)
         self.assertIn(r"$\lVert A\rVert_F^2$", cleaned)
+        self.assertIn(r"$\hat{y}^{(k)}$", cleaned)
+        self.assertIn(r"$H(\hat{y})$", cleaned)
+        self.assertIn(r"$\omega = \exp(-H(\hat{y})/\tau)$", cleaned)
+        self.assertIn(r"$h^z$", cleaned)
+        self.assertNotIn("y_hat", cleaned)
+        self.assertNotIn("`h^z`", cleaned)
 
     def test_get_default_target_date_uses_report_timezone(self) -> None:
         now = datetime.datetime(2026, 5, 31, 21, 5, tzinfo=datetime.timezone.utc)

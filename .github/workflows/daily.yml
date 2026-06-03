@@ -51,6 +51,7 @@ jobs:
 
           if [ -n "$FETCH_DATE" ]; then
             python fetch_papers.py --date "$FETCH_DATE"
+            python -m unittest discover -s tests
             git add daily/ _posts/
             git diff --cached --quiet || git commit -m "daily paper: $FETCH_DATE"
             git pull --rebase origin main
@@ -81,6 +82,13 @@ PY
 
               if ! python fetch_papers.py --date "$day"; then
                 echo "[backfill] failed for $day"
+                failed+=("$day")
+                cd "$GITHUB_WORKSPACE"
+                rm -rf "$temp_dir"
+                continue
+              fi
+              if ! python -m unittest discover -s tests; then
+                echo "[backfill] validation failed for $day"
                 failed+=("$day")
                 cd "$GITHUB_WORKSPACE"
                 rm -rf "$temp_dir"
@@ -120,6 +128,7 @@ PY
             echo "[catch-up] generating missing $day"
             python fetch_papers.py --date "$day"
           done
+          python -m unittest discover -s tests
           git add daily/ _posts/
           git diff --cached --quiet || git commit -m "daily paper: $(TZ=Asia/Shanghai date +%Y-%m-%d)"
           git pull --rebase origin main
