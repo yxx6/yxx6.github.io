@@ -5,6 +5,9 @@ on:
     # 每天北京时间 05:17 运行（UTC+8，对应 UTC 21:17，即前一天）
     # 避开整点，降低 GitHub Actions schedule 在高负载时被延迟或丢弃的概率。
     - cron: "17 21 * * *"
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       date:
