@@ -45,6 +45,8 @@ class FetchArxivTests(unittest.TestCase):
                 "| ML-20",
                 "| 数据集 | 指标 |",
                 "|--------|------|",
+                "",
+                "复杂度是 $O(|V| \\times L \\times d_{model})$。",
             ]
         )
 
@@ -55,6 +57,7 @@ class FetchArxivTests(unittest.TestCase):
         self.assertNotIn("**解决的问题**：使用未来交互", cleaned)
         self.assertNotIn("| ML-20", cleaned)
         self.assertIn("| 数据集 | 指标 |", cleaned)
+        self.assertIn(r"$O(\lvert V\rvert \times L \times d_{model})$", cleaned)
 
     def test_get_default_target_date_uses_report_timezone(self) -> None:
         now = datetime.datetime(2026, 5, 31, 21, 5, tzinfo=datetime.timezone.utc)

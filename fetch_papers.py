@@ -377,7 +377,42 @@ def _clean_generated_markdown(text: str) -> str:
                 continue
         final_lines.append(line)
 
-    return "\n".join(final_lines).strip()
+    return _escape_math_pipes("\n".join(final_lines)).strip()
+
+
+def _escape_math_pipes(text: str) -> str:
+    """
+    Kramdown parses bare | characters before MathJax runs, so formulas such as
+    $O(|V|)$ can become HTML tables. Remove literal pipes inside math spans.
+    """
+    def escape_math_content(content: str) -> str:
+        content = content.replace(r"\|", "|")
+        content = re.sub(r"\|([^|\n]+?)\|", r"\\lvert \1\\rvert", content)
+        return content.replace("|", r"\vert")
+
+    def apply_outside_code_blocks(block: str) -> str:
+        replacements = [
+            (re.compile(r"\$\$(.*?)\$\$", flags=re.S), "$$", "$$"),
+            (re.compile(r"\\\[(.*?)\\\]", flags=re.S), r"\[", r"\]"),
+            (re.compile(r"\\\((.*?)\\\)"), r"\(", r"\)"),
+            (re.compile(r"(?<!\$)\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)"), "$", "$"),
+        ]
+
+        for pattern, open_delim, close_delim in replacements:
+            block = pattern.sub(
+                lambda match: (
+                    f"{open_delim}{escape_math_content(match.group(1))}{close_delim}"
+                ),
+                block,
+            )
+        return block
+
+    parts = re.split(r"(```.*?```)", text, flags=re.S)
+    for index, part in enumerate(parts):
+        if part.startswith("```"):
+            continue
+        parts[index] = apply_outside_code_blocks(part)
+    return "".join(parts)
 
 
 def complete_with_continuation(

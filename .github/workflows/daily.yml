@@ -2,8 +2,9 @@ name: Daily Paper Fetch
 
 on:
   schedule:
-    # 每天北京时间 05:00 运行（UTC+8，对应 UTC 21:00，即前一天）
-    - cron: "0 21 * * *"
+    # 每天北京时间 05:17 运行（UTC+8，对应 UTC 21:17，即前一天）
+    # 避开整点，降低 GitHub Actions schedule 在高负载时被延迟或丢弃的概率。
+    - cron: "17 21 * * *"
   push:
     branches:
       - main
@@ -114,7 +115,15 @@ PY
             exit 0
           fi
 
-          python fetch_papers.py
+          for offset in 3 2 1; do
+            day="$(TZ=Asia/Shanghai date -d "$offset day ago" +%Y-%m-%d)"
+            if [ -f "daily/$day/index.md" ]; then
+              echo "[catch-up] $day already exists, skip"
+              continue
+            fi
+            echo "[catch-up] generating missing $day"
+            python fetch_papers.py --date "$day"
+          done
           git add daily/ _posts/
           git diff --cached --quiet || git commit -m "daily paper: $(TZ=Asia/Shanghai date +%Y-%m-%d)"
           git pull --rebase origin main

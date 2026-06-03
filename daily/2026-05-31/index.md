@@ -133,10 +133,10 @@ $$L_r = \mathbb{E}_{u,v} \left( d_s(u,v) - d_c(u,v) \right)^2$$
 ## 五、工程挑战与设计选择（核心精华）
 
 ### 挑战 1：文本编码带来的全量 item 计算瓶颈
-> **问题描述**：文本推荐中每条 item 由多 token 描述，每次计算所有 item 的 embedding 相当于把所有文本重新跑一遍编码器，时间复杂度 $O(|V| \times L \times d_{model})$，无法承受。
+> **问题描述**：文本推荐中每条 item 由多 token 描述，每次计算所有 item 的 embedding 相当于把所有文本重新跑一遍编码器，时间复杂度 $O(\lvert V\rvert \times L \times d_{model})$，无法承受。
 
 - **根因**：传统数据蒸馏把合成交互表示为在全 item 集上的分布，天然要求全部 item embedding；
-- **FOSTER 解法**：每步随机采样 $N \ll |V|$ 个 item，仅用它们的 embedding 构建局部合成数据；
+- **FOSTER 解法**：每步随机采样 $N \ll \lvert V\rvert$ 个 item，仅用它们的 embedding 构建局部合成数据；
 - **为什么可行**：类似负采样，梯度估计的无偏性保证收敛，且 $N$ 无需很大；
 - **代价**：需要维护一个轻量的随机采样器，每步调用；若 $N$ 过小会增大方差，但论文给出稳点推荐值 512。
 
