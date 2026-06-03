@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import unittest
 
 
@@ -46,6 +47,29 @@ class DailyReportContentTests(unittest.TestCase):
             self.assertNotIn(r"\[", text, path.as_posix())
             self.assertNotIn(r"\]", text, path.as_posix())
             self.assertNotIn("|V|", text, path.as_posix())
+
+    def test_daily_report_has_no_common_bare_formula_tokens(self) -> None:
+        patterns = {
+            "bare y_hat": r"\by_hat\b",
+            "bare h^(...)": r"\bh\^\(",
+            "bare h^z": r"\bh\^z\b",
+            "bare exp weight": r"\b(?:omega|ω)\s*=\s*exp\s*\(",
+            "bare omega": r"(?<![A-Za-z])ω(?![A-Za-z])",
+            "bare tau": r"(?<![A-Za-z])τ(?![A-Za-z])",
+            "inline-code formula": r"`[^`\n]*(?:y_hat|h\^|ω|τ|ŷ|exp\(|\^\(|_\{|[A-Za-z]_[A-Za-z])[^`\n]*`",
+        }
+
+        for path in self._iter_daily_report_paths():
+            text = path.read_text(encoding="utf-8")
+            text = re.sub(r"```.*?```", "", text, flags=re.S)
+            text = re.sub(r"\$\$.*?\$\$", "", text, flags=re.S)
+            text = re.sub(r"(?<!\$)\$(?!\$)[^$\n]+?(?<!\\)\$(?!\$)", "", text)
+
+            for label, pattern in patterns.items():
+                self.assertIsNone(
+                    re.search(pattern, text),
+                    f"{path.as_posix()} has {label}",
+                )
 
     def test_daily_report_content_lines_do_not_end_with_truncated_phrases(self) -> None:
         sentence_endings = ("。", "！", "？", ".", "!", "?", "”", '"', "）", ")", "`", "**")
