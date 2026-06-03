@@ -25,21 +25,28 @@ permissions:
 
 jobs:
   fetch-and-deploy:
-    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
+      - name: Skip push events
+        if: github.event_name == 'push'
+        run: echo "Daily generation is skipped for normal code pushes."
+
       - name: Checkout
+        if: github.event_name != 'push'
         uses: actions/checkout@v4
 
       - name: Set up Python
+        if: github.event_name != 'push'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install Python dependencies
+        if: github.event_name != 'push'
         run: pip install -r requirements.txt
 
       - name: Fetch papers and generate post
+        if: github.event_name != 'push'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           FETCH_DATE: ${{ inputs.date }}
