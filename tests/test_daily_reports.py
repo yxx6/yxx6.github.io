@@ -37,6 +37,15 @@ class DailyReportContentTests(unittest.TestCase):
                 f"{path.as_posix()} has a truncated overview paragraph",
             )
 
+    def test_daily_report_math_delimiters_are_kramdown_safe(self) -> None:
+        for path in self._iter_daily_report_paths():
+            text = path.read_text(encoding="utf-8")
+
+            self.assertNotIn(r"\(", text, path.as_posix())
+            self.assertNotIn(r"\)", text, path.as_posix())
+            self.assertNotIn(r"\[", text, path.as_posix())
+            self.assertNotIn(r"\]", text, path.as_posix())
+
     def test_daily_report_content_lines_do_not_end_with_truncated_phrases(self) -> None:
         sentence_endings = ("。", "！", "？", ".", "!", "?", "”", '"', "）", ")", "`", "**")
 

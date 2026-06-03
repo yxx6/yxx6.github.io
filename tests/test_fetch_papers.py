@@ -47,6 +47,8 @@ class FetchArxivTests(unittest.TestCase):
                 "|--------|------|",
                 "",
                 "复杂度是 $O(|V| \\times L \\times d_{model})$。",
+                "旧写法是 \\(N \\ll |V|\\)。",
+                "范数是 $\\|A\\|_F^2$。",
             ]
         )
 
@@ -58,6 +60,8 @@ class FetchArxivTests(unittest.TestCase):
         self.assertNotIn("| ML-20", cleaned)
         self.assertIn("| 数据集 | 指标 |", cleaned)
         self.assertIn(r"$O(\lvert V\rvert \times L \times d_{model})$", cleaned)
+        self.assertIn(r"$N \ll \lvert V\rvert$", cleaned)
+        self.assertIn(r"$\lVert A\rVert_F^2$", cleaned)
 
     def test_get_default_target_date_uses_report_timezone(self) -> None:
         now = datetime.datetime(2026, 5, 31, 21, 5, tzinfo=datetime.timezone.utc)

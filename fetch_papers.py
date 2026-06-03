@@ -377,24 +377,41 @@ def _clean_generated_markdown(text: str) -> str:
                 continue
         final_lines.append(line)
 
-    return _escape_math_pipes("\n".join(final_lines)).strip()
+    return _normalize_math_markdown("\n".join(final_lines)).strip()
 
 
-def _escape_math_pipes(text: str) -> str:
+def _normalize_math_markdown(text: str) -> str:
     """
-    Kramdown parses bare | characters before MathJax runs, so formulas such as
-    $O(|V|)$ can become HTML tables. Remove literal pipes inside math spans.
+    Keep generated math compatible with Kramdown + MathJax.
+
+    Kramdown treats \( and \[ as Markdown escapes before MathJax runs, and it
+    parses bare | characters before MathJax sees formulas. Normalize math
+    delimiters to dollar syntax and remove literal pipes inside math spans.
     """
     def escape_math_content(content: str) -> str:
-        content = content.replace(r"\|", "|")
-        content = re.sub(r"\|([^|\n]+?)\|", r"\\lvert \1\\rvert", content)
-        return content.replace("|", r"\vert")
+        content = re.sub(r"\\\|(.+?)\\\|", r"\\lVert \1\\rVert", content)
+        content = re.sub(
+            r"(?<!\\)\|([^|\n]+?)(?<!\\)\|",
+            r"\\lvert \1\\rvert",
+            content,
+        )
+        return re.sub(r"(?<!\\)\|", r"\\vert", content)
 
     def apply_outside_code_blocks(block: str) -> str:
+        block = re.sub(
+            r"\\\[(.*?)\\\]",
+            lambda match: f"$${match.group(1)}$$",
+            block,
+            flags=re.S,
+        )
+        block = re.sub(
+            r"\\\((.*?)\\\)",
+            lambda match: f"${match.group(1)}$",
+            block,
+        )
+
         replacements = [
             (re.compile(r"\$\$(.*?)\$\$", flags=re.S), "$$", "$$"),
-            (re.compile(r"\\\[(.*?)\\\]", flags=re.S), r"\[", r"\]"),
-            (re.compile(r"\\\((.*?)\\\)"), r"\(", r"\)"),
             (re.compile(r"(?<!\$)\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)"), "$", "$"),
         ]
 
