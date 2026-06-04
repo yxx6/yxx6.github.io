@@ -233,6 +233,31 @@ class FetchArxivTests(unittest.TestCase):
         self.assertIn("自动解读失败", result["summary_zh"])
         self.assertIn("fallback failed", result["summary_zh"])
 
+    def test_summarize_paper_prompt_escapes_latex_braces(self) -> None:
+        paper = {
+            "arxiv_id": "2606.00001v1",
+            "title": "Test Paper",
+            "abstract": "Test abstract",
+            "authors": ["Test Author"],
+            "categories": ["cs.IR"],
+            "published": "2026-06-01",
+            "url": "https://arxiv.org/abs/2606.00001v1",
+        }
+        prompts = []
+
+        def fake_complete(_client, prompt, **_kwargs):
+            prompts.append(prompt)
+            return "这是一段完整解读。"
+
+        with (
+            mock.patch.object(fetch_papers, "fetch_fulltext", return_value=("", "abstract")),
+            mock.patch.object(fetch_papers, "complete_with_continuation", side_effect=fake_complete),
+        ):
+            result = fetch_papers.summarize_paper(SimpleNamespace(), paper)
+
+        self.assertIn("这是一段完整解读。", result["summary_zh"])
+        self.assertIn(r"$\hat{y}^{(k)}$", prompts[0])
+
     def test_render_post_uses_plain_yaml_quotes_and_permalink(self) -> None:
         content = fetch_papers.render_post(
             papers=[

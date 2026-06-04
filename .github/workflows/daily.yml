@@ -85,6 +85,24 @@ jobs:
               python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE" --force-fallback --fallback-reason "$generation_failure_reason"
             commit_message="daily paper: $FETCH_START_DATE to $FETCH_END_DATE"
           else
+            fallback_files="$(
+              {
+                grep -RIl "^generation_status: fallback$" daily/*/index.md 2>/dev/null || true
+                grep -RIl "自动综述生成失败" daily/*/index.md 2>/dev/null || true
+                grep -RIl "静态占位版本" daily/*/index.md 2>/dev/null || true
+                grep -RIl "降级说明" daily/*/index.md 2>/dev/null || true
+              } | sort -u
+            )"
+            if [ -n "$fallback_files" ]; then
+              while IFS= read -r path; do
+                day="$(basename "$(dirname "$path")")"
+                echo "[fallback-rerun] regenerating $day"
+                attempted_dates+=("$day")
+                python fetch_papers.py --date "$day" || \
+                  python fetch_papers.py --date "$day" --force-fallback --fallback-reason "$generation_failure_reason"
+              done <<< "$fallback_files"
+            fi
+
             for offset in 3 2 1; do
               day="$(TZ=Asia/Shanghai date -d "$offset day ago" +%Y-%m-%d)"
               if [ -f "daily/$day/index.md" ] && ! grep -q "^generation_status: fallback$" "daily/$day/index.md"; then
