@@ -80,7 +80,7 @@ jobs:
           else
             for offset in 3 2 1; do
               day="$(TZ=Asia/Shanghai date -d "$offset day ago" +%Y-%m-%d)"
-              if [ -f "daily/$day/index.md" ]; then
+              if [ -f "daily/$day/index.md" ] && ! grep -q "^generation_status: fallback$" "daily/$day/index.md"; then
                 echo "[catch-up] $day already exists, skip"
                 continue
               fi

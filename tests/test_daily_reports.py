@@ -124,6 +124,7 @@ class DailyReportContentTests(unittest.TestCase):
                         "date:",
                         "permalink:",
                         "paper_count:",
+                        "generation_status:",
                         "share:",
                         "related:",
                         "read_time:",

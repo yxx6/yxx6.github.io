@@ -1,4 +1,5 @@
 import datetime
+import tempfile
 import urllib.error
 import unittest
 from types import SimpleNamespace
@@ -257,6 +258,24 @@ class FetchArxivTests(unittest.TestCase):
         self.assertIn('  - "cs.LG"', frontmatter)
         self.assertNotIn("“", frontmatter)
         self.assertNotIn("”", frontmatter)
+
+    def test_generate_post_writes_fallback_when_arxiv_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with (
+                mock.patch.object(fetch_papers, "POSTS_DIR", temp_dir),
+                mock.patch.object(fetch_papers, "fetch_arxiv", side_effect=RuntimeError("rate limited")),
+            ):
+                path = fetch_papers.generate_post_for_date(
+                    SimpleNamespace(),
+                    datetime.date(2026, 6, 3),
+                )
+
+            with open(path, encoding="utf-8") as handle:
+                content = handle.read()
+
+        self.assertIn("generation_status: fallback", content)
+        self.assertIn("paper_count: 0", content)
+        self.assertIn("arXiv 临时不可用：rate limited", content)
 
 
 if __name__ == "__main__":
