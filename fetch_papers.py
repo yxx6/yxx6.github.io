@@ -1036,12 +1036,28 @@ def main():
         "--end-date",
         help="批量补日报的结束日期，格式 YYYY-MM-DD，需要和 --start-date 一起使用",
     )
+    parser.add_argument(
+        "--force-fallback",
+        action="store_true",
+        help="直接写入占位日报，不调用 arXiv 或 DeepSeek；用于自动流程的失败兜底",
+    )
+    parser.add_argument(
+        "--fallback-reason",
+        default="自动生成暂时不可用，等待后续补跑。",
+        help="写入占位日报的原因说明",
+    )
     args = parser.parse_args()
 
     try:
         target_dates = iter_target_dates(args.date, args.start_date, args.end_date)
     except ValueError as exc:
         parser.error(str(exc))
+
+    if args.force_fallback:
+        for target_date in target_dates:
+            path = write_unavailable_post(target_date.isoformat(), args.fallback_reason)
+            print(f"[完成] 占位日报已写入：{path}")
+        return
 
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:

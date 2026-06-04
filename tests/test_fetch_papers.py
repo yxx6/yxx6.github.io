@@ -277,6 +277,32 @@ class FetchArxivTests(unittest.TestCase):
         self.assertIn("paper_count: 0", content)
         self.assertIn("arXiv 临时不可用：rate limited", content)
 
+    def test_force_fallback_cli_does_not_require_api_key(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with (
+                mock.patch.object(fetch_papers, "POSTS_DIR", temp_dir),
+                mock.patch.object(
+                    fetch_papers.sys,
+                    "argv",
+                    [
+                        "fetch_papers.py",
+                        "--date",
+                        "2026-06-03",
+                        "--force-fallback",
+                        "--fallback-reason",
+                        "validation failed",
+                    ],
+                ),
+                mock.patch.dict(fetch_papers.os.environ, {}, clear=True),
+            ):
+                fetch_papers.main()
+
+            with open(f"{temp_dir}/2026-06-03/index.md", encoding="utf-8") as handle:
+                content = handle.read()
+
+        self.assertIn("generation_status: fallback", content)
+        self.assertIn("validation failed", content)
+
 
 if __name__ == "__main__":
     unittest.main()

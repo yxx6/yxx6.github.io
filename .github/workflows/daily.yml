@@ -71,11 +71,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          attempted_dates=()
+          generation_failure_reason="生成脚本执行失败，等待后续自动补跑。"
+          validation_failure_reason="内容校验未通过，等待后续自动补跑。"
+
           if [ -n "$FETCH_DATE" ]; then
-            python fetch_papers.py --date "$FETCH_DATE"
+            attempted_dates=("$FETCH_DATE")
+            python fetch_papers.py --date "$FETCH_DATE" || \
+              python fetch_papers.py --date "$FETCH_DATE" --force-fallback --fallback-reason "$generation_failure_reason"
             commit_message="daily paper: $FETCH_DATE"
           elif [ -n "$FETCH_START_DATE" ] && [ -n "$FETCH_END_DATE" ]; then
-            python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE"
+            python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE" || \
+              python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE" --force-fallback --fallback-reason "$generation_failure_reason"
             commit_message="daily paper: $FETCH_START_DATE to $FETCH_END_DATE"
           else
             for offset in 3 2 1; do
@@ -85,12 +92,27 @@ jobs:
                 continue
               fi
               echo "[catch-up] generating missing $day"
-              python fetch_papers.py --date "$day"
+              attempted_dates+=("$day")
+              python fetch_papers.py --date "$day" || \
+                python fetch_papers.py --date "$day" --force-fallback --fallback-reason "$generation_failure_reason"
             done
             commit_message="daily paper catch-up: $(TZ=Asia/Shanghai date +%Y-%m-%d)"
           fi
 
-          python -m unittest discover -s tests
+          if ! python -m unittest discover -s tests; then
+            echo "[validation] generated content failed validation; writing fallback page(s)."
+            if [ -n "$FETCH_DATE" ]; then
+              python fetch_papers.py --date "$FETCH_DATE" --force-fallback --fallback-reason "$validation_failure_reason"
+            elif [ -n "$FETCH_START_DATE" ] && [ -n "$FETCH_END_DATE" ]; then
+              python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE" --force-fallback --fallback-reason "$validation_failure_reason"
+            else
+              for day in "${attempted_dates[@]}"; do
+                python fetch_papers.py --date "$day" --force-fallback --fallback-reason "$validation_failure_reason"
+              done
+            fi
+            python -m unittest discover -s tests
+          fi
+
           git add daily/ _posts/
           if git diff --cached --quiet; then
             echo "No daily changes to commit."
