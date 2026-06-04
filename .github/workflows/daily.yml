@@ -61,6 +61,8 @@ jobs:
         if: steps.gate.outputs.run_daily == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ARXIV_MAX_ATTEMPTS: "8"
+          ARXIV_RETRY_SLEEP_SECONDS: "60"
           FETCH_DATE: ${{ github.event.inputs.date }}
           FETCH_START_DATE: ${{ github.event.inputs.start_date }}
           FETCH_END_DATE: ${{ github.event.inputs.end_date }}

@@ -44,12 +44,18 @@ from config import (
 # arXiv 查询
 # ─────────────────────────────────────────
 
-ARXIV_API = "http://export.arxiv.org/api/query"
+ARXIV_API = "https://export.arxiv.org/api/query"
 NS = {"atom": "http://www.w3.org/2005/Atom",
       "arxiv": "http://arxiv.org/schemas/atom"}
 
 # 全文截取字符上限（避免超出模型 context）
 FULLTEXT_CHAR_LIMIT = 30000
+ARXIV_USER_AGENT = os.environ.get(
+    "ARXIV_USER_AGENT",
+    "dailypaper/1.0 (https://yxx6.github.io; automated daily paper fetcher)",
+)
+ARXIV_MAX_ATTEMPTS = int(os.environ.get("ARXIV_MAX_ATTEMPTS", "8"))
+ARXIV_RETRY_SLEEP_SECONDS = int(os.environ.get("ARXIV_RETRY_SLEEP_SECONDS", "60"))
 
 
 def _get_report_timezone() -> datetime.tzinfo:
@@ -104,9 +110,23 @@ def iter_target_dates(
 
 
 def _http_get(url: str, timeout: int = 30) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "dailypaper/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": ARXIV_USER_AGENT})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read()
+
+
+def _retry_after_seconds(headers) -> int | None:
+    if not headers:
+        return None
+
+    value = headers.get("Retry-After")
+    if not value:
+        return None
+
+    try:
+        return max(0, int(value))
+    except ValueError:
+        return None
 
 
 def _strip_html(raw: str) -> str:
@@ -186,30 +206,35 @@ def fetch_arxiv(target_date: datetime.date) -> list[dict]:
     url = f"{ARXIV_API}?{params}"
     print(f"[arXiv] 查询: {url[:120]}...")
 
-    for attempt in range(5):
+    for attempt in range(ARXIV_MAX_ATTEMPTS):
+        has_more_attempts = attempt < ARXIV_MAX_ATTEMPTS - 1
         try:
-            time.sleep(3 + attempt * 5)  # 首次等3秒，每次重试多等5秒
+            time.sleep(min(30, 3 + attempt * 5))  # 首次等3秒，每次重试多等5秒
             xml_data = _http_get(url, timeout=60)
             break
         except urllib.error.HTTPError as e:
-            retry_after = e.headers.get("Retry-After") if e.headers else None
-            extra_sleep = 0
-            if e.code == 429:
-                try:
-                    extra_sleep = max(30, int(retry_after or 0))
-                except ValueError:
-                    extra_sleep = 30
-                if attempt < 4:
-                    print(f"[arXiv] 第{attempt+1}次请求失败: {e}，{extra_sleep} 秒后重试")
-                    time.sleep(extra_sleep)
-                    continue
+            if e.code == 429 and has_more_attempts:
+                retry_after = _retry_after_seconds(e.headers)
+                backoff = min(180, ARXIV_RETRY_SLEEP_SECONDS * (attempt + 1))
+                extra_sleep = max(ARXIV_RETRY_SLEEP_SECONDS, retry_after or 0, backoff)
+                print(f"[arXiv] 第{attempt+1}次请求被限流: {e}，{extra_sleep} 秒后重试")
+                time.sleep(extra_sleep)
+                continue
+            if has_more_attempts:
+                extra_sleep = min(60, 10 * (attempt + 1))
+                print(f"[arXiv] 第{attempt+1}次请求失败: {e}，{extra_sleep} 秒后重试")
+                time.sleep(extra_sleep)
+                continue
             print(f"[arXiv] 第{attempt+1}次请求失败: {e}")
-            if attempt == 4:
-                raise
+            raise
         except Exception as e:
+            if has_more_attempts:
+                extra_sleep = min(60, 10 * (attempt + 1))
+                print(f"[arXiv] 第{attempt+1}次请求失败: {e}，{extra_sleep} 秒后重试")
+                time.sleep(extra_sleep)
+                continue
             print(f"[arXiv] 第{attempt+1}次请求失败: {e}")
-            if attempt == 4:
-                raise
+            raise
 
     root = ET.fromstring(xml_data)
     papers = []

@@ -1,4 +1,5 @@
 import datetime
+import urllib.error
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -110,6 +111,32 @@ class FetchArxivTests(unittest.TestCase):
             [paper["arxiv_id"] for paper in papers],
             ["target-day-paper", "previous-day-paper"],
         )
+
+    def test_fetch_arxiv_retries_after_rate_limit(self) -> None:
+        feed = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          {_build_entry("target-day-paper", "2026-05-28", "Target day paper")}
+        </feed>
+        """.encode("utf-8")
+        rate_limit = urllib.error.HTTPError(
+            url="https://export.arxiv.org/api/query",
+            code=429,
+            msg="Too Many Requests",
+            hdrs={"Retry-After": "1"},
+            fp=None,
+        )
+
+        with (
+            mock.patch.object(fetch_papers, "_http_get", side_effect=[rate_limit, feed]),
+            mock.patch.object(fetch_papers, "MAX_PAPERS", 10),
+            mock.patch.object(fetch_papers, "DAYS_BACK", 2),
+            mock.patch.object(fetch_papers, "ARXIV_RETRY_SLEEP_SECONDS", 1),
+            mock.patch("fetch_papers.time.sleep") as sleep,
+        ):
+            papers = fetch_papers.fetch_arxiv(datetime.date(2026, 5, 28))
+
+        self.assertEqual([paper["arxiv_id"] for paper in papers], ["target-day-paper"])
+        self.assertIn(mock.call(1), sleep.mock_calls)
 
     def test_complete_with_continuation_retries_after_length_finish(self) -> None:
         class FakeCompletions:
