@@ -71,90 +71,29 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          attempted_dates=()
-          existing_rerun_dates=()
-          generation_failure_reason="生成脚本执行失败，等待后续自动补跑。"
-          validation_failure_reason="内容校验未通过，等待后续自动补跑。"
-          is_existing_rerun_date() {
-            local target="$1"
-            for existing_day in "${existing_rerun_dates[@]}"; do
-              if [ "$existing_day" = "$target" ]; then
-                return 0
-              fi
-            done
-            return 1
-          }
-
           if [ -n "$FETCH_DATE" ]; then
-            attempted_dates=("$FETCH_DATE")
-            python fetch_papers.py --date "$FETCH_DATE" || \
-              python fetch_papers.py --date "$FETCH_DATE" --force-fallback --fallback-reason "$generation_failure_reason"
+            python fetch_papers.py --date "$FETCH_DATE"
             commit_message="daily paper: $FETCH_DATE"
           elif [ -n "$FETCH_START_DATE" ] && [ -n "$FETCH_END_DATE" ]; then
-            python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE" || \
-              python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE" --force-fallback --fallback-reason "$generation_failure_reason"
+            python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE"
             commit_message="daily paper: $FETCH_START_DATE to $FETCH_END_DATE"
           else
-            fallback_files="$(
-              {
-                grep -RIl "^generation_status: fallback$" daily/*/index.md 2>/dev/null || true
-                grep -RIl "自动综述生成失败" daily/*/index.md 2>/dev/null || true
-                grep -RIl "静态占位版本" daily/*/index.md 2>/dev/null || true
-                grep -RIl "降级说明" daily/*/index.md 2>/dev/null || true
-              } | sort -u
-            )"
-            if [ -n "$fallback_files" ]; then
-              while IFS= read -r path; do
-                day="$(basename "$(dirname "$path")")"
-                echo "[fallback-rerun] regenerating $day"
-                attempted_dates+=("$day")
-                existing_rerun_dates+=("$day")
-                if ! python fetch_papers.py --date "$day"; then
-                  echo "[fallback-rerun] $day regeneration failed; restoring previous content."
-                  git restore -- "daily/$day/index.md"
-                fi
-              done <<< "$fallback_files"
-            fi
-
             for offset in 3 2 1; do
               day="$(TZ=Asia/Shanghai date -d "$offset day ago" +%Y-%m-%d)"
-              if [ -f "daily/$day/index.md" ] && ! grep -q "^generation_status: fallback$" "daily/$day/index.md"; then
+              if [ -f "daily/$day/index.md" ]; then
                 echo "[catch-up] $day already exists, skip"
                 continue
               fi
               echo "[catch-up] generating missing $day"
-              attempted_dates+=("$day")
-              if [ -f "daily/$day/index.md" ]; then
-                existing_rerun_dates+=("$day")
-                if ! python fetch_papers.py --date "$day"; then
-                  echo "[catch-up] $day regeneration failed; restoring previous content."
-                  git restore -- "daily/$day/index.md"
-                fi
-              else
-                python fetch_papers.py --date "$day" || \
-                  python fetch_papers.py --date "$day" --force-fallback --fallback-reason "$generation_failure_reason"
-              fi
+              python fetch_papers.py --date "$day"
             done
             commit_message="daily paper catch-up: $(TZ=Asia/Shanghai date +%Y-%m-%d)"
           fi
 
           if ! python -m unittest discover -s tests; then
-            echo "[validation] generated content failed validation; writing fallback page(s)."
-            if [ -n "$FETCH_DATE" ]; then
-              python fetch_papers.py --date "$FETCH_DATE" --force-fallback --fallback-reason "$validation_failure_reason"
-            elif [ -n "$FETCH_START_DATE" ] && [ -n "$FETCH_END_DATE" ]; then
-              python fetch_papers.py --start-date "$FETCH_START_DATE" --end-date "$FETCH_END_DATE" --force-fallback --fallback-reason "$validation_failure_reason"
-            else
-              for day in "${attempted_dates[@]}"; do
-                if is_existing_rerun_date "$day"; then
-                  echo "[validation] $day was an existing report rerun; restoring previous content."
-                  git restore -- "daily/$day/index.md"
-                else
-                  python fetch_papers.py --date "$day" --force-fallback --fallback-reason "$validation_failure_reason"
-                fi
-              done
-            fi
-            python -m unittest discover -s tests
+            echo "[validation] generated content failed validation; refusing to publish fallback or invalid daily report."
+            git restore -- daily/ _posts/
+            exit 1
           fi
 
           git add daily/ _posts/

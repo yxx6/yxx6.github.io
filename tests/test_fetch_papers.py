@@ -2,6 +2,7 @@ import datetime
 import tempfile
 import urllib.error
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
@@ -284,49 +285,33 @@ class FetchArxivTests(unittest.TestCase):
         self.assertNotIn("“", frontmatter)
         self.assertNotIn("”", frontmatter)
 
-    def test_generate_post_writes_fallback_when_arxiv_fails(self) -> None:
+    def test_generate_post_does_not_write_fallback_when_arxiv_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             with (
                 mock.patch.object(fetch_papers, "POSTS_DIR", temp_dir),
                 mock.patch.object(fetch_papers, "fetch_arxiv", side_effect=RuntimeError("rate limited")),
+            ):
+                with self.assertRaises(RuntimeError):
+                    fetch_papers.generate_post_for_date(
+                        SimpleNamespace(),
+                        datetime.date(2026, 6, 3),
+                    )
+
+            self.assertFalse(Path(temp_dir, "2026-06-03", "index.md").exists())
+
+    def test_generate_post_skips_without_writing_when_no_papers(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with (
+                mock.patch.object(fetch_papers, "POSTS_DIR", temp_dir),
+                mock.patch.object(fetch_papers, "fetch_arxiv", return_value=[]),
             ):
                 path = fetch_papers.generate_post_for_date(
                     SimpleNamespace(),
                     datetime.date(2026, 6, 3),
                 )
 
-            with open(path, encoding="utf-8") as handle:
-                content = handle.read()
-
-        self.assertIn("generation_status: fallback", content)
-        self.assertIn("paper_count: 0", content)
-        self.assertIn("arXiv 临时不可用：rate limited", content)
-
-    def test_force_fallback_cli_does_not_require_api_key(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            with (
-                mock.patch.object(fetch_papers, "POSTS_DIR", temp_dir),
-                mock.patch.object(
-                    fetch_papers.sys,
-                    "argv",
-                    [
-                        "fetch_papers.py",
-                        "--date",
-                        "2026-06-03",
-                        "--force-fallback",
-                        "--fallback-reason",
-                        "validation failed",
-                    ],
-                ),
-                mock.patch.dict(fetch_papers.os.environ, {}, clear=True),
-            ):
-                fetch_papers.main()
-
-            with open(f"{temp_dir}/2026-06-03/index.md", encoding="utf-8") as handle:
-                content = handle.read()
-
-        self.assertIn("generation_status: fallback", content)
-        self.assertIn("validation failed", content)
+            self.assertIsNone(path)
+            self.assertFalse(Path(temp_dir, "2026-06-03", "index.md").exists())
 
 
 if __name__ == "__main__":

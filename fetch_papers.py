@@ -936,42 +936,6 @@ def render_post(papers: list[dict], overview: str, date_str: str) -> str:
     return frontmatter + "\n" + "\n".join(body_parts)
 
 
-def render_unavailable_post(date_str: str, reason: str) -> str:
-    title = POST_TITLE_TEMPLATE.format(date=date_str)
-    frontmatter = "\n".join(
-        [
-            "---",
-            "layout: post",
-            f'title: "{title}"',
-            f"date: {date_str} 00:00:00 +0800",
-            f"permalink: /daily/{date_str}/",
-            "paper_count: 0",
-            "generation_status: fallback",
-            "share: false",
-            "related: false",
-            "read_time: false",
-            "comments: false",
-            "topics:",
-            '  - "automation"',
-            "---",
-        ]
-    )
-
-    body_parts = [
-        (
-            "## 今日概览\n\n"
-            "今天的日报生成链路暂时没有拿到可用论文数据，因此先发布占位页；后续自动补跑会在数据恢复后覆盖为完整论文日报。\n"
-        ),
-        (
-            "## 生成状态\n\n"
-            f"- 原因：{reason}\n"
-            "- 处理：保留页面入口，后续定时任务会继续补跑该日期。\n"
-        ),
-        "## 论文列表（共 0 篇）\n\n暂无可展示论文。\n",
-    ]
-    return frontmatter + "\n" + "\n".join(body_parts)
-
-
 def write_post(content: str, date_str: str) -> str:
     day_dir = os.path.join(POSTS_DIR, date_str)
     os.makedirs(day_dir, exist_ok=True)
@@ -981,26 +945,14 @@ def write_post(content: str, date_str: str) -> str:
     return path
 
 
-def write_unavailable_post(date_str: str, reason: str) -> str:
-    return write_post(render_unavailable_post(date_str, reason), date_str)
-
-
 def generate_post_for_date(client: OpenAI, target_date: datetime.date) -> str | None:
     date_str = target_date.isoformat()
     print(f"[开始] 生成 {date_str} 的日报")
 
-    try:
-        papers = fetch_arxiv(target_date)
-    except Exception as exc:
-        print(f"[降级] {date_str} arXiv 查询失败，写入占位日报：{exc}")
-        return write_unavailable_post(date_str, f"arXiv 临时不可用：{exc}")
-
+    papers = fetch_arxiv(target_date)
     if not papers:
-        print(f"[降级] {date_str} 没有符合条件的论文，写入占位日报。")
-        return write_unavailable_post(
-            date_str,
-            "未检索到符合当前主题和日期窗口的论文。",
-        )
+        print(f"[跳过] {date_str} 没有符合条件的论文。")
+        return None
 
     print(f"[DeepSeek] 开始解读 {len(papers)} 篇论文，模型：{AI_MODEL}")
     for i, paper in enumerate(papers, 1):
@@ -1036,28 +988,12 @@ def main():
         "--end-date",
         help="批量补日报的结束日期，格式 YYYY-MM-DD，需要和 --start-date 一起使用",
     )
-    parser.add_argument(
-        "--force-fallback",
-        action="store_true",
-        help="直接写入占位日报，不调用 arXiv 或 DeepSeek；用于自动流程的失败兜底",
-    )
-    parser.add_argument(
-        "--fallback-reason",
-        default="自动生成暂时不可用，等待后续补跑。",
-        help="写入占位日报的原因说明",
-    )
     args = parser.parse_args()
 
     try:
         target_dates = iter_target_dates(args.date, args.start_date, args.end_date)
     except ValueError as exc:
         parser.error(str(exc))
-
-    if args.force_fallback:
-        for target_date in target_dates:
-            path = write_unavailable_post(target_date.isoformat(), args.fallback_reason)
-            print(f"[完成] 占位日报已写入：{path}")
-        return
 
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
