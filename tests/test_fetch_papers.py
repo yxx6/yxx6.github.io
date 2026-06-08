@@ -214,7 +214,7 @@ class FetchArxivTests(unittest.TestCase):
         paper = {
             "arxiv_id": "2606.00001v1",
             "title": "Test Paper",
-            "abstract": "Test abstract",
+            "abstract": "Test abstract with y_hat and |V|.",
             "authors": ["Test Author"],
             "categories": ["cs.IR"],
             "published": "2026-06-01",
@@ -233,6 +233,9 @@ class FetchArxivTests(unittest.TestCase):
 
         self.assertIn("自动解读失败", result["summary_zh"])
         self.assertIn("fallback failed", result["summary_zh"])
+        self.assertNotIn("y_hat", result["summary_zh"])
+        self.assertNotIn("|V|", result["summary_zh"])
+        self.assertIn(r"$\hat{y}$", result["summary_zh"])
 
     def test_summarize_paper_prompt_escapes_latex_braces(self) -> None:
         paper = {

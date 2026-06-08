@@ -539,6 +539,11 @@ def _normalize_common_bare_formula_tokens(text: str) -> str:
             lambda match: r"$\omega = \exp(-H/\tau)$",
             segment,
         )
+        segment = re.sub(
+            r"(?<![\w$\\])\|([A-Za-z])\|(?![\w$])",
+            lambda match: rf"$\lvert {match.group(1)}\rvert$",
+            segment,
+        )
         segment = re.sub(r"\bH\(y_hat\)", lambda match: r"$H(\hat{y})$", segment)
         segment = re.sub(
             r"\by_hat\^\(([^)]+)\)",
@@ -788,7 +793,7 @@ def summarize_paper_with_abstract_fallback(
 
 def build_static_summary_fallback(paper: dict, error: Exception) -> dict:
     paper = dict(paper)
-    paper["summary_zh"] = (
+    summary = (
         "## 一、论文定位\n"
         "这篇论文的自动深读在生成时失败，以下仅保留基于摘要的最小化信息，建议后续人工复查原文。\n\n"
         "## 二、核心方法\n"
@@ -800,6 +805,7 @@ def build_static_summary_fallback(paper: dict, error: Exception) -> dict:
         f"> **降级说明**：自动解读失败，错误原因：{type(error).__name__}: {error}\n"
         "> **一句话总结**：该论文需要人工补读后再纳入正式日报结论。"
     )
+    paper["summary_zh"] = _clean_generated_markdown(summary)
     return paper
 
 
