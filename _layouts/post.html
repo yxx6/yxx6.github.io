@@ -6,9 +6,6 @@ layout: default
     <h1 class="post-title">{{ page.title }}</h1>
     <div class="post-meta">
       <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%Y年%m月%d日" }}</time>
-      {% if page.paper_count %}
-        <span class="paper-count">· 共 {{ page.paper_count }} 篇论文</span>
-      {% endif %}
       {% if page.topics %}
         <span class="topics">· 主题：{{ page.topics | join: "、" }}</span>
       {% endif %}

@@ -13,7 +13,7 @@ I am Yixuan Xu (徐毅轩). Welcome to my homepage.
 
 ## Research Interests
 
-To be determined.
+Generative recommender systems; semantic IDs.
 
 ## Education
 
@@ -24,7 +24,7 @@ I am an incoming PhD student in the Department of Mathematics at the Hong Kong U
 ## Experience
 
 Intern, Hotel Recommendation Ranking, Trip.com Group (Ctrip)  
-March 2026 – present
+March 2026 – June 2026
 
 ## Publications
 
