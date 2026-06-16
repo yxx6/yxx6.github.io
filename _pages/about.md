@@ -1,7 +1,7 @@
 ---
 permalink: /
 title: "About Me"
-description: "Yixuan Xu's academic homepage. Undergraduate at USTC and incoming PhD student at HKUST, working on recommender systems, generative retrieval, semantic IDs, and multimodal recommendation."
+description: "Yixuan Xu's academic homepage. Undergraduate at USTC and incoming PhD student at HKUST, working on recommender systems, generative retrieval, and multimodal recommendation."
 sitemap: true
 author_profile: true
 redirect_from: 
@@ -13,7 +13,7 @@ I am Yixuan Xu (徐毅轩). Welcome to my homepage.
 
 ## Research Interests
 
-Generative recommender systems; semantic IDs.
+Generative recommender systems.
 
 ## Education
 
