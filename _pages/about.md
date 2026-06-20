@@ -13,7 +13,7 @@ I am Yixuan Xu (徐毅轩). Welcome to my homepage.
 
 ## Research Interests
 
-Generative recommender systems.
+Generative Recommendation.
 
 ## Education
 
