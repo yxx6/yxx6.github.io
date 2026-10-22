@@ -12,7 +12,7 @@ lang                     : "en-US"
 title                    : "Yixuan Xu"
 title_separator          : "-"
 name                     : &name "Yixuan Xu (徐毅轩)"
-description              : &description "Yixuan Xu's academic homepage. Undergraduate at USTC and incoming PhD student at HKUST, working on recommender systems, generative retrieval, and multimodal recommendation."
+description              : &description "Yixuan Xu's academic homepage. PhD student in Mathematics at HKUST, interested in generative recommendation and semantic IDs."
 url                      : https://yxx6.github.io
 baseurl                  : ""
 repository               : "yxx6/yxx6.github.io"
@@ -22,11 +22,13 @@ author:
   avatar           : "profile.png"
   name             : "Yixuan Xu (徐毅轩)"
   pronouns         :
-  bio              : "Undergraduate at USTC"
-  location         : "China"
+  bio              : |-
+    PhD Student in Mathematics
+    at HKUST
+  location         : "Hong Kong, China"
   employer         :
   uri              :
-  email            : "yxxu2005@gmail.com"
+  email            : "yxugr@connect.ust.hk"
   wechat           : "his_WeixinID"
 
   arxiv            :
