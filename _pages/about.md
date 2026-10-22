@@ -15,7 +15,7 @@ I am Yixuan Xu (徐毅轩), a first-year PhD student in the Department of Mathem
 
 I maintain an ongoing research collaboration with the hotel recommendation algorithms team at Trip.com Group (Ctrip), focusing on retrieval for hotel search.
 
-Anyone interested in research discussions or collaboration is welcome to reach out at [yxugr@connect.ust.hk](mailto:yxugr@connect.ust.hk) (Yixuan XU in Generative Recommendation).
+Anyone interested in research discussions or collaboration is welcome to reach out at [yxugr@connect.ust.hk](mailto:yxugr@connect.ust.hk) (yxugr: Yixuan XU in Generative Recommendation).
 
 ## Research Interests
 
